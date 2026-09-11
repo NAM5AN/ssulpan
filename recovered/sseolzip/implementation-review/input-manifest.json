@@ -1,0 +1,38 @@
+{
+  "reviewedInputs": [
+    {
+      "name": "변경요약.md",
+      "bytes": 2670,
+      "sha256": "940d6e1663fdd093b00b7cdd4cf4e6efe49ac082dd755a2ab860153dcec580c1"
+    },
+    {
+      "name": "master_prompt.md",
+      "bytes": 17372,
+      "sha256": "b276d68d4a967eb8e31f5abbfdd6083dc1b6dd67e6412b1fc688725f8f420e69"
+    },
+    {
+      "name": "서버_반영항목.md",
+      "bytes": 8699,
+      "sha256": "b4bf85c79a22863cad1249e81a7f899ba8ee12db9a204220fc06963b9015ab2e"
+    },
+    {
+      "name": "generate_result.schema.json",
+      "bytes": 2799,
+      "sha256": "93aa5432b4299e55a2f4e42be3aee3090d3ab7e29cb50e90fd2f6c3c005a89a4"
+    },
+    {
+      "name": "rewrite_result.schema.json",
+      "bytes": 610,
+      "sha256": "3d22fbe6f2c2971428ed354f7be65ba88257bbc240dff4ff01163809a8901fa8"
+    },
+    {
+      "name": "social_result.schema.json",
+      "bytes": 1236,
+      "sha256": "975d309a74a210c819f1171565844ed152a5c6de5d4ae7769e327cd830771a44"
+    }
+  ],
+  "baselineCommit": "a5a8d9a1acc6047cefa38b53952e00dfb1d20d53",
+  "runtime": "v24.19.0",
+  "testsPassed": 23,
+  "liveRepositoryModified": false
+}

@@ -1,0 +1,92 @@
+{
+  "semanticVerdict": "undetermined",
+  "blocksSave": false,
+  "autoRetry": false,
+  "sourceStatus": "complete",
+  "checks": {
+    "events": "literal_signals_only",
+    "people": "literal_signals_only",
+    "dialogue": "quote_statistics_and_optional_anchors",
+    "emotion": "not_checked",
+    "ending": "literal_signals_only",
+    "unknownNames": "not_checked"
+  },
+  "quoteStatistics": {
+    "source": 1,
+    "result": 0
+  },
+  "issues": [
+    {
+      "code": "ANCHOR_TERM_NOT_FOUND",
+      "kind": "event",
+      "severity": "review",
+      "sourceEvidence": [
+        {
+          "start": 0,
+          "end": 19,
+          "text": "김민수는 사직서를 낸 적이 없었다."
+        }
+      ],
+      "resultEvidence": [],
+      "note": "근거 단어 '사직서'가 없습니다. 동의어·간접 표현 여부를 확인하세요."
+    },
+    {
+      "code": "ANCHOR_TERM_NOT_FOUND",
+      "kind": "ending",
+      "severity": "review",
+      "sourceEvidence": [
+        {
+          "start": 46,
+          "end": 79,
+          "text": "메일 날짜는 9월 1일이었다. 퇴사가 아니라 팀 이동이었다."
+        }
+      ],
+      "resultEvidence": [],
+      "note": "근거 단어 '팀 이동'가 없습니다. 동의어·간접 표현 여부를 확인하세요."
+    },
+    {
+      "code": "ENDING_NUMBER_NOT_FOUND",
+      "kind": "ending",
+      "severity": "review",
+      "sourceEvidence": [
+        {
+          "start": 56,
+          "end": 58,
+          "text": "1일"
+        }
+      ],
+      "resultEvidence": [
+        {
+          "start": 40,
+          "end": 42,
+          "text": "9월"
+        },
+        {
+          "start": 43,
+          "end": 45,
+          "text": "2일"
+        }
+      ],
+      "note": "결말 근거의 수치 표기가 결과에 없습니다. 숫자의 역할이나 한글 표기를 사람이 확인하세요."
+    },
+    {
+      "code": "QUOTED_SPAN_COUNT_CHANGED",
+      "kind": "dialogue",
+      "severity": "review",
+      "sourceEvidence": [
+        {
+          "start": 20,
+          "end": 36,
+          "text": "“인수인계 받으러 왔습니다.”"
+        }
+      ],
+      "resultEvidence": [],
+      "note": "따옴표 구간 수가 달라졌습니다. 직접·간접화법 변경이나 인용 표기 차이일 수 있으며 오류 판정이 아닙니다."
+    }
+  ],
+  "limitations": [
+    "문자열 일치가 의미·인과·감정·반전의 보존을 증명하지 않습니다.",
+    "일치하지 않는 표현은 정상적인 재구성일 수 있습니다.",
+    "이름 탐지에는 외부 NER 또는 사람이 확인한 후보가 필요합니다."
+  ]
+}

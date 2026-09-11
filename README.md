@@ -1,40 +1,23 @@
 # 썰판 (ssulpan)
 
-커뮤니티형 썰 콘텐츠 사이트 프로젝트입니다.
+**현재 저장소는 기존 사이트의 완전한 이전본이 아닙니다.**
 
-## 현재 복구 기준
+## 원본 사본 — 2026-09-11 회수
 
-ChatGPT Sites의 기존 `sseolzip` 프로젝트 화면/기능을 기준으로 GitHub 버전을 재구성하고 있습니다.
+[원본 이전 기록과 누락 목록](recovered/sseolzip/README.md)
 
-현재 확인된 기능:
-- 홈 / 직장생활 / 인간관계 / 일상 / 인기글
-- 추천글 배너 자동재생
-- 검색
-- 최신순 / 오래된순 / 조회수순 정렬
-- 카드형 / 목록형 보기
-- 조회수 / 인기글 / 태그
-- 숨겨진 제작실 페이지
-- 원고 생성·수정·저장·게시 흐름
-- Claude 생성 결과에서 태그 자동 추출 규칙
+사용자 Library에 보관된 실제 코드 검토 ZIP과 프롬프트 ZIP에서 22개 파일을 변경 없이 옮겼습니다. 실제 제작실 클라이언트, 서버 코드 2개, 마스터 프롬프트·스키마, 미적용 패치·모듈·테스트가 포함됩니다. 원본 내용은 SHA-256과 Git tree로 검증했습니다.
 
-## 실행
+```sh
+node recovered/sseolzip/verify-originals.mjs
+cd recovered/sseolzip/implementation-review
+npm test
+```
 
-정적 파일이라 `index.html`을 바로 열 수 있고, Vercel에 그대로 배포할 수 있습니다.
+원본의 화면 렌더러, 전체 HTML/CSS, 게시글 데이터, 이미지, DB 자료 등은 아직 확보하지 못했습니다. 회수된 원본을 실행 중인 사이트에 연결하거나 배포한 상태는 아닙니다.
 
-제작실은 메인 UI에 링크를 노출하지 않고 `/studio.html`로 직접 접근합니다.
+## 루트의 기존 재구성본
 
-## AI 생성 API
+루트 HTML/JS/CSS와 `api/generate.js`는 원본 소스를 가져온 것이 아니라 이전에 화면 정보로 다시 만든 간이 버전입니다. 샘플 본문·조회수·그라데이션 이미지, 브라우저별 로컬 저장, 실제 공개 목록에 연결되지 않은 게시 버튼이 포함되어 있습니다. 원본 제작실과 혼동하지 마세요.
 
-Vercel 환경 변수에 아래 값을 설정합니다.
-
-- `ANTHROPIC_API_KEY`
-- `ANTHROPIC_MODEL` (선택)
-
-`/api/generate`가 Claude 호출을 중계합니다. API 키는 브라우저에 노출하지 않습니다.
-
-## 이전 사이트
-
-- ChatGPT Sites slug: `sseolzip`
-- GitHub repo: `NAM5AN/ssulpan`
-
-> ChatGPT Sites 원본 소스 파일은 직접 export되지 않아, 보존된 사이트 내용과 제작실 화면을 기준으로 GitHub 버전을 복구합니다.
+이번 원본 회수 커밋에서는 이 실행 파일들을 바꾸지 않았습니다. 루트 API에는 운영용 인증 등이 갖춰지지 않았으므로 API 키를 넣어 그대로 공개 운영하지 마세요. 기존 ChatGPT Sites도 변경하지 않았습니다.

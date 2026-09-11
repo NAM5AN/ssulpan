@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ssuljib.example/schemas/social_result.schema.json",
+  "title": "deliver_result (action=social) 서버 검증용 스키마",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "titles",
+    "hook",
+    "coverDetail",
+    "caption",
+    "hashtags"
+  ],
+  "properties": {
+    "titles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "hook": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "3~4줄은 권장 기준이며 실패 조건이 아니다"
+    },
+    "coverDetail": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "description": "표지 화면 규격"
+    },
+    "caption": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5000
+    },
+    "hashtags": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "description": "부가 필드 단독 보정용. 본문 검증 실패가 아닌 부가 필드 문제일 때 이 스키마로 재호출한다."
+}

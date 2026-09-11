@@ -1,0 +1,31 @@
+✔ legacy numeric length, missing mode and automatic source mode never become instructions (4.523781ms)
+✔ explicit request survives cleanDraft and reaches generation and rewrite only (1.35283ms)
+✔ invalid rewrite target is rejected instead of choosing before (1.690427ms)
+✔ explicit request text is not silently truncated (0.56061ms)
+✔ UI collect preserves a saved explicit request but drops legacy values (10.062021ms)
+✔ repair sends full before/after with frozen title and no source, rewrite or length instructions (26.245085ms)
+✔ only requested fields are applied even if model changes other social fields (10.666846ms)
+✔ body injection and missing fields are rejected (4.337169ms)
+✔ revision or content changes make repair stale (2.453163ms)
+✔ hook recommendations warn but do not fail; cover quote must exist in body (2.225175ms)
+✔ repair rejects invalid tags and fixed-title omission without any truncation (5.782294ms)
+✔ one repair call returns a candidate and provider failure never overwrites source (4.689696ms)
+✔ even well-shaped tool input is rejected on an incomplete stop reason (0.851203ms)
+✔ adapter passes the full repair context once and returns raw untruncated fields (5.404457ms)
+✔ name aliases accept Korean particles but not a different longer name (8.115929ms)
+✔ matching surface cues never claim semantic preservation (18.863549ms)
+✔ missing events, old names and changed ending numbers carry actual source evidence (5.740108ms)
+✔ direct to indirect speech is informational, not a generation failure (2.25497ms)
+✔ changed source and invalid evidence anchors are rejected before comparison (2.397584ms)
+✔ incomplete source is explicitly not checked (1.584601ms)
+✔ new-name candidates require evidence and are not asserted as new people (3.979578ms)
+✔ semantic reversal with identical keywords remains unverified, not a false pass (3.048261ms)
+✔ quotation parsing and number formatting remain diagnostic (3.197572ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 471.121448

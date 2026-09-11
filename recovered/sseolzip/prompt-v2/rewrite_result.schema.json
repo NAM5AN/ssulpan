@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ssuljib.example/schemas/rewrite_result.schema.json",
+  "title": "deliver_result (action=rewrite) 서버 검증용 스키마",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "text"
+  ],
+  "properties": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60000,
+      "description": "target 구간의 전체 본문"
+    }
+  },
+  "description": "부분 수정 결과. text는 target 구간의 전체 본문이다. maxLength는 저장 상한이며 분량 목표가 아니다."
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ssuljib.example/schemas/generate_result.schema.json",
+  "title": "deliver_result (action=generate) 서버 검증용 스키마",
+  "description": "전체 생성 결과 13개 필드. maxLength 값은 애플리케이션 제한이며 본문 분량 목표가 아니다. API나 데이터베이스의 고유 한도가 아니므로 필요하면 조정한다. Claude strict 모드가 지원하지 않는 maxLength / minItems / uniqueItems 제약을 포함하므로 도구 정의가 아니라 서버측 검증에만 사용한다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "titles",
+    "category",
+    "teaser",
+    "beforeContent",
+    "afterContent",
+    "storyBible",
+    "gateLine",
+    "hook",
+    "coverDetail",
+    "caption",
+    "hashtags",
+    "imageText"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "titles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 30
+    },
+    "teaser": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "beforeContent": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60000,
+      "description": "저장 상한. 생성 목표 분량이 아니다"
+    },
+    "afterContent": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60000,
+      "description": "저장 상한. 생성 목표 분량이 아니다"
+    },
+    "storyBible": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000,
+      "description": "인물 관계, 사건 순서, 익명화 대응표. 원문 보존 판정의 근거로 쓰지 않는다"
+    },
+    "gateLine": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "hook": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "3~4줄은 권장 기준이며 실패 조건이 아니다"
+    },
+    "coverDetail": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "description": "표지 화면 규격. 40자 초과 시 이 필드만 보정한다"
+    },
+    "caption": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5000
+    },
+    "hashtags": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "imageText": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 8000,
+      "description": "표시용 발췌. OCR 전체 결과는 별도 필드에 보관한다"
+    }
+  }
+}

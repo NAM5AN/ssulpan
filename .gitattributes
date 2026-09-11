@@ -1,0 +1,3 @@
+# Preserve recovered original bytes on Windows checkouts as well.
+recovered/sseolzip/implementation-review/** -text
+recovered/sseolzip/prompt-v2/** -text

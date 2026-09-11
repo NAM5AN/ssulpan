@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-11",
+  "runtime": "v22.16.0",
+  "originalFileCount": 22,
+  "originalFilesGitTree": "9297da10d814004f88df22199b6c6c0be1715b68",
+  "sha256Manifest": "ORIGINALS.sha256",
+  "tests": {
+    "command": "npm test",
+    "directory": "implementation-review",
+    "passed": 23,
+    "failed": 0,
+    "claudeCalls": "mocked",
+    "liveDatabaseTested": false,
+    "browserE2ETested": false,
+    "deployed": false
+  },
+  "archives": [
+    {
+      "name": "ssuljib_implementation_review.zip",
+      "bytes": 56245,
+      "sha256": "09c27ee144cf565acbe000d8aba68a57a93839df1f5fc43fc1263fba4f25cef6"
+    },
+    {
+      "name": "ssuljib_master_prompt(2).zip",
+      "bytes": 14651,
+      "sha256": "7e98eb4b9319655c180e204812e1c8f351f102d86641328ea8b259706b89a239"
+    }
+  ],
+  "snapshotMatchesLiveSitesVersion21": "unverified",
+  "runnableSiteMigrationComplete": false
+}
