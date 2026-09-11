@@ -1,0 +1,82 @@
+{
+  "source": {
+    "type": "chatgpt_sites_projection",
+    "project_id": "appgprj_6aa19a48f9d08191a3e1e50853e737da",
+    "slug": "sseolzip",
+    "source_version_number": 21,
+    "projection_revision": 43,
+    "status": "active",
+    "access_mode": "custom"
+  },
+  "observed_public_state": {
+    "total_posts": 6,
+    "page": 1,
+    "total_pages": 1,
+    "hero_count": 3,
+    "sort_options": ["최신순", "오래된순", "조회수순"],
+    "view_modes": ["카드형 보기", "목록형 보기"],
+    "categories": ["직장생활", "인간관계", "일상"],
+    "board_counts": {
+      "직장생활": 2,
+      "인간관계": 2,
+      "일상": 2
+    },
+    "tag_cloud": [
+      "#회사썰",
+      "#친구썰",
+      "#일상썰",
+      "#직장생활",
+      "#인수인계",
+      "#결혼식",
+      "#인간관계",
+      "#중고거래",
+      "#가족썰",
+      "#신입",
+      "#직장인공감",
+      "#생일선물"
+    ]
+  },
+  "posts": [
+    {
+      "category": "직장생활",
+      "title": "퇴사도 안 했는데, 내 후임이 출근했다",
+      "teaser": "월요일 아침, 처음 보는 사람이 내 옆에 앉았다. 그러더니 웃으면서 말했다. “인수인계 받으러 왔습니다.”",
+      "views_observed": 0
+    },
+    {
+      "category": "인간관계",
+      "title": "내 결혼식 못 온다던 친구가, 다른 식장 사진에 찍혔다",
+      "teaser": "가족 일 때문에 못 온다던 12년 친구. 그런데 내 결혼식 다음 날, 다른 신부 옆에서 웃고 있는 사진을 봤다.",
+      "views_observed": 0
+    },
+    {
+      "category": "일상",
+      "title": "중고거래하러 갔더니 판매자가 엄마였다",
+      "teaser": "사진 속 스탠드가 익숙했다. 설마 했는데, 약속 장소에 익숙한 사람이 서 있었다.",
+      "views_observed": 0
+    },
+    {
+      "category": "직장생활",
+      "title": "신입이 회의록 한 줄을 읽자, 팀장 얼굴이 굳었다",
+      "teaser": "팀장이 사람들 앞에서 내 실수라고 했다. 그때 입사한 지 한 달 된 신입이 노트북을 돌렸다.",
+      "views_observed": 0
+    },
+    {
+      "category": "인간관계",
+      "title": "생일 선물 대신, 친구가 반나절을 비워줬다",
+      "teaser": "필요한 거 있냐는 말에 아무것도 없다고 했다. 친구는 토요일 오전을 비워 두라고 했다.",
+      "views_observed": 0
+    },
+    {
+      "category": "일상",
+      "title": "매일 엘리베이터를 잡아주던 사람이 안 보였다",
+      "teaser": "같은 시간에 출근하던 이웃. 인사밖에 해본 적 없는데, 며칠째 안 보이니 신경이 쓰였다.",
+      "views_observed": 0
+    }
+  ],
+  "notes": [
+    "views_observed는 source version 21 / projection revision 43에서 화면에 실제 표시된 값이다.",
+    "이 스냅샷은 공개 화면에서 관측 가능한 데이터만 기록한다. D1 내부의 과거 수정 이력이나 비공개 행은 포함하지 않는다.",
+    "글별 태그 연결은 projection 텍스트에서 직접 식별되지 않아 전역 tag_cloud만 보존한다."
+  ]
+}
