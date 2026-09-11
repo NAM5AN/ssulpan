@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>썰판 채널 제작실</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="studio-shell">
+    <div class="studio-top">
+      <a class="brand" href="/">썰판</a>
+      <strong>채널 제작실</strong>
+      <span id="saveStatus" class="status">저장 안 됨</span>
+    </div>
+
+    <div class="notice">이 페이지는 메인 화면에 진입 링크를 노출하지 않습니다. Claude API는 서버 함수(`/api/generate`)를 통해 호출하며 키를 브라우저에 저장하지 않습니다.</div>
+
+    <section class="studio-card">
+      <div class="studio-grid">
+        <div class="field full">
+          <label for="storySelect">이야기 선택</label>
+          <div class="studio-actions">
+            <select id="storySelect" style="flex:1"></select>
+            <button id="newDraft">새 원고</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="title">제목</label>
+          <input id="title" placeholder="게시글 제목" />
+        </div>
+        <div class="field">
+          <label for="category">카테고리</label>
+          <select id="category"><option>직장생활</option><option>인간관계</option><option>일상</option></select>
+        </div>
+        <div class="field full">
+          <label for="seed">원본 소재 / 상황 설명</label>
+          <textarea id="seed" placeholder="원본 썰이나 핵심 사건을 적어 주세요."></textarea>
+        </div>
+        <div class="field full">
+          <div class="studio-actions"><button id="generate" class="primary">Claude로 원고 생성</button><span id="generateStatus" class="status"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="studio-card">
+      <h2>미리 보여줄 내용</h2>
+      <div class="field"><textarea id="previewText"></textarea><div id="previewCount" class="char-count">0자</div></div>
+      <div class="studio-actions"><button data-copy="previewText">내용 복사</button><button data-rewrite="previewText">이 부분 다시 쓰기</button></div>
+    </section>
+
+    <section class="studio-card">
+      <h2>광고 후 보여줄 내용</h2>
+      <div class="field"><textarea id="afterText"></textarea><div id="afterCount" class="char-count">0자</div></div>
+      <div class="studio-actions"><button data-copy="afterText">내용 복사</button><button data-rewrite="afterText">이 부분 다시 쓰기</button></div>
+    </section>
+
+    <section class="studio-card">
+      <div class="studio-grid">
+        <div class="field full"><label for="rewriteGuide">다시 쓸 때 반영할 요청</label><textarea id="rewriteGuide" style="min-height:100px" placeholder="톤, 사건 순서, 말투 등 수정 요청"></textarea></div>
+        <div class="field full"><label for="memo">인물·사건 메모</label><textarea id="memo" style="min-height:120px"></textarea></div>
+        <div class="field"><label for="continueLine">이어 읽기 문구</label><input id="continueLine" placeholder="메일을 연 순간, 날짜부터 이상했다." /></div>
+        <div class="field"><label for="tags">태그</label><input id="tags" placeholder="#회사썰 #직장생활" /></div>
+        <div class="field full"><label for="gradient">그라데이션 길이 <span id="gradientValue">180px</span></label><div class="range-row"><input id="gradient" type="range" min="80" max="420" value="180" /></div></div>
+      </div>
+    </section>
+
+    <section class="studio-card">
+      <div class="studio-actions">
+        <button id="exportDraft">원고 내보내기</button>
+        <button id="saveDraft">원고 저장</button>
+        <button id="publishDraft" class="primary">게시글 업데이트</button>
+        <button id="viewPublished">게시된 글 보기</button>
+      </div>
+    </section>
+  </main>
+  <script src="/studio.js" defer></script>
+</body>
+</html>
