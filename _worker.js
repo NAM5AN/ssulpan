@@ -16,7 +16,13 @@ async function data(url, options={}) {
 // Apply recovered text only while a record still exactly matches that old sample.
 // Do not write the DB here; the existing authenticated editor saves real edits.
 function originalContent(p) {
-  const old=source.previousSeeds.find(x=>x.id===dbId(p.id));
+  let old=source.previousSeeds.find(x=>x.id===dbId(p.id));
+  // Confirmed by a read-only DB query: seed 2 predates the wording in data.js.
+  // An exact match is required; any later user edit remains untouched.
+  if(old&&dbId(p.id)==='2')old={...old,
+    beforeContent:'12년을 친구로 지낸 사람이었다. 내 결혼식에는 가족 일이 생겨 정말 미안하다며 오지 못한다고 했다.\n\n서운했지만 이해하려 했다. 그런데 우연히 본 사진 한 장에서 그 친구가 다른 결혼식장에 있었다.',
+    afterContent:'처음에는 날짜를 잘못 본 줄 알았다. 사진을 확대해 보고, 올라온 시간을 다시 확인했다.\n\n내 결혼식이 끝난 다음 날도 아니었다. 같은 날, 다른 시간대 식장이었다.\n\n사진 속 표정이 너무 밝아서 오히려 무슨 말을 해야 할지 모르겠더라.'
+  };
   const actual=source.originals.find(x=>x.id===dbId(p.id));
   if(!old||!actual||p.title!==old.title||p.beforeContent!==old.beforeContent||p.afterContent!==old.afterContent||p.gateLine!==old.gateLine)return p;
   return {...p,beforeContent:actual.beforeContent,afterContent:actual.afterContent,gateLine:actual.gateLine,hook:actual.hook,coverDetail:actual.coverDetail,fadeHeight:actual.fadeHeight};
