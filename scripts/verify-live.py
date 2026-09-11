@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only deployment checks. Does not sign in or call paid AI."""
-import hashlib,json,os,time,urllib.request
+import hashlib,json,os,time,urllib.request,urllib.error
 from pathlib import Path
 BASE='https://ssulpan.pages.dev'
 VERIFY=os.environ.get('GITHUB_SHA','manual')
@@ -10,6 +10,13 @@ def get(path):
  for attempt in range(6):
   try:
    with urllib.request.urlopen(url,timeout=25) as r:return r.status,dict(r.headers),r.read()
+  except urllib.error.HTTPError as e:
+   if e.code in (401,403):
+    diagnostic={'result':'access-denied','path':path,'httpStatus':e.code,'headers':{k:v for k,v in e.headers.items() if k.lower() in ('server','content-type','cf-ray','cf-mitigated','location','x-ssul-ui','x-ssul-backend')},'body':e.read(3000).decode('utf-8','replace'),'commit':VERIFY}
+    Path('live-verification.json').write_text(json.dumps(diagnostic,ensure_ascii=False,indent=2))
+    print(json.dumps(diagnostic,ensure_ascii=False,indent=2),flush=True)
+    raise
+   last=e;time.sleep(4)
   except Exception as e:last=e;time.sleep(4)
  raise RuntimeError(f'{path}: {last}')
 status,headers,body=get('/')
