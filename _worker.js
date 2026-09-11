@@ -1,76 +1,52 @@
-// Compatibility backend for the original, unchanged UI scripts and routes.
-// No service-role key or AI secret is used or exposed here.
+// Public original UI + private no-login studio adapter.
+// The studio has no user-facing login. Access is granted by one unguessable studio URL,
+// then an HttpOnly same-site cookie is used for same-origin API requests.
 import { renderHome, renderStory, dbId, storyUrl } from './ssul-render.mjs';
 import source from './ssul-source-data.mjs';
 const API='https://wvwoqqfizgbhvdzlqscc.supabase.co/functions/v1/ssul_public';
+const STUDIO_API='https://wvwoqqfizgbhvdzlqscc.supabase.co/functions/v1/ssul_studio';
 const PUBLIC_KEY='sb_publishable_iLtSrF52sRfzalwcR4Nt-w_dJiU2q16';
+const STUDIO_TOKEN_HASH='f7a1d606f95157f616ec2b3606a6e24206594da6878e9e47252055125d9cb78d';
 const security={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-SSUL-UI':'original-live-source','X-SSUL-Backend':'supabase'};
-function html(text,status=200) { return new Response(text,{status,headers:security}); }
-async function data(url, options={}) {
-  const response=await fetch(url,{...options,headers:{apikey:PUBLIC_KEY,...options.headers},signal:AbortSignal.timeout(15000)});
-  let body;try{body=await response.json();}catch{throw new Error('Public API returned invalid JSON');}
-  if(!response.ok||!body.ok)throw new Error('Public API unavailable: '+response.status);
-  return body;
+const jsonHeaders={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
+function html(text,status=200,extra={}){return new Response(text,{status,headers:{...security,...extra}})}
+function json(data,status=200,extra={}){return new Response(JSON.stringify(data),{status,headers:{...jsonHeaders,...extra}})}
+async function data(url,options={}){const response=await fetch(url,{...options,headers:{apikey:PUBLIC_KEY,...options.headers},signal:AbortSignal.timeout(15000)});let body;try{body=await response.json()}catch{throw new Error('Public API returned invalid JSON')}if(!response.ok||!body.ok)throw new Error('Public API unavailable: '+response.status);return body}
+function originalContent(p){let old=source.previousSeeds.find(x=>x.id===dbId(p.id));if(old&&dbId(p.id)==='2')old={...old,beforeContent:'12년을 친구로 지낸 사람이었다. 내 결혼식에는 가족 일이 생겨 정말 미안하다며 오지 못한다고 했다.\n\n서운했지만 이해하려 했다. 그런데 우연히 본 사진 한 장에서 그 친구가 다른 결혼식장에 있었다.',afterContent:'처음에는 날짜를 잘못 본 줄 알았다. 사진을 확대해 보고, 올라온 시간을 다시 확인했다.\n\n내 결혼식이 끝난 다음 날도 아니었다. 같은 날, 다른 시간대 식장이었다.\n\n사진 속 표정이 너무 밝아서 오히려 무슨 말을 해야 할지 모르겠더라.'};const actual=source.originals.find(x=>x.id===dbId(p.id));if(!old||!actual||p.title!==old.title||p.beforeContent!==old.beforeContent||p.afterContent!==old.afterContent||p.gateLine!==old.gateLine)return p;return{...p,beforeContent:actual.beforeContent,afterContent:actual.afterContent,gateLine:actual.gateLine,hook:actual.hook,coverDetail:actual.coverDetail,fadeHeight:actual.fadeHeight}}
+async function sha256Hex(value){const out=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(out)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+function cookieValue(request,name){const raw=request.headers.get('Cookie')||'';for(const part of raw.split(';')){const [k,...rest]=part.trim().split('=');if(k===name)return decodeURIComponent(rest.join('='))}return''}
+async function validStudioToken(token){return !!token&&(await sha256Hex(token))===STUDIO_TOKEN_HASH}
+async function requireStudio(request){const token=cookieValue(request,'ssul_studio');if(!await validStudioToken(token))return null;return token}
+async function studioCall(token,payload){const response=await fetch(STUDIO_API,{method:'POST',headers:{apikey:PUBLIC_KEY,'Content-Type':'application/json','x-studio-token':token},body:JSON.stringify(payload),signal:AbortSignal.timeout(170000)});let body;try{body=await response.json()}catch{throw Object.assign(new Error('제작실 서버 응답을 읽지 못했어요.'),{status:502})}if(!response.ok||!body.ok)throw Object.assign(new Error(body.error||'제작실 요청을 처리하지 못했어요.'),{status:response.status});return body}
+async function requestBody(request){try{return await request.json()}catch{return{}}}
+function arrayB64(ab){const a=new Uint8Array(ab);let s='';for(let i=0;i<a.length;i+=32768)s+=String.fromCharCode(...a.subarray(i,i+32768));return btoa(s)}
+async function studioApi(request,path,token){const method=request.method,u=new URL(request.url);
+  if(path==='/api/settings'){if(method==='GET'||method==='POST')return json(await studioCall(token,{action:'settings_get'}));}
+  if(path==='/api/writing-prompt'){if(method==='GET')return json(await studioCall(token,{action:'writing_prompt_get'}));if(method==='PUT'){const b=await requestBody(request);return json(await studioCall(token,{action:'writing_prompt_save',prompt:b.prompt,revision:b.revision}));}}
+  if(path==='/api/drafts'&&method==='GET')return json(await studioCall(token,{action:'drafts_list'}));
+  const versions=path.match(/^\/api\/drafts\/([\w-]+)\/versions$/);if(versions&&method==='GET')return json(await studioCall(token,{action:'versions_list',id:versions[1]}));
+  const publish=path.match(/^\/api\/drafts\/([\w-]+)\/publish$/);if(publish&&method==='POST'){const b=await requestBody(request);return json(await studioCall(token,{action:'publish',id:publish[1],revision:b.revision}));}
+  const draft=path.match(/^\/api\/drafts\/([\w-]+)$/);if(draft){if(method==='GET')return json(await studioCall(token,{action:'draft_get',id:draft[1]}));if(method==='PUT'){const b=await requestBody(request);return json(await studioCall(token,{action:'draft_save',id:draft[1],data:b.data,revision:b.revision,reason:b.reason}));}}
+  if(path==='/api/jobs'&&method==='GET')return json(await studioCall(token,{action:'jobs_list'}));
+  if(path==='/api/jobs'&&method==='POST'){const b=await requestBody(request),out=await studioCall(token,{action:'job_run',...b});const lines=[{type:'started',jobId:out.id},{type:'progress',message:'Claude 작업을 완료했어요. 결과를 확인해 주세요.'},{type:'done',jobId:out.id,result:out.result,usage:out.usage,model:out.model,calls:out.calls,promptUsage:out.promptUsage,promptRevision:out.promptRevision,target:out.target}].map(x=>JSON.stringify(x)).join('\n')+'\n';return new Response(lines,{headers:{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})}
+  if(path==='/api/source'&&method==='POST'){const b=await requestBody(request);return json(await studioCall(token,{action:'source_read',url:b.url}));}
+  if(path==='/api/images'&&method==='POST'){const mime=request.headers.get('Content-Type')||'',ab=await request.arrayBuffer();if(ab.byteLength>4*1024*1024)return json({error:'이미지는 4MB 이하로 올려 주세요.'},413);return json(await studioCall(token,{action:'image_upload',name:u.searchParams.get('name')||'이미지',mime,base64:arrayB64(ab)}));}
+  const image=path.match(/^\/api\/images\/([\w-]+)$/);if(image&&method==='GET'){const out=await studioCall(token,{action:'image_url',id:image[1]});return Response.redirect(out.url,302)}
+  return json({error:'요청한 제작실 기능을 찾을 수 없어요.'},404);
 }
-// The six initial DB rows were reconstructed samples, not the original text.
-// Apply recovered text only while a record still exactly matches that old sample.
-// Do not write the DB here; the existing authenticated editor saves real edits.
-function originalContent(p) {
-  let old=source.previousSeeds.find(x=>x.id===dbId(p.id));
-  // Confirmed by a read-only DB query: seed 2 predates the wording in data.js.
-  // An exact match is required; any later user edit remains untouched.
-  if(old&&dbId(p.id)==='2')old={...old,
-    beforeContent:'12년을 친구로 지낸 사람이었다. 내 결혼식에는 가족 일이 생겨 정말 미안하다며 오지 못한다고 했다.\n\n서운했지만 이해하려 했다. 그런데 우연히 본 사진 한 장에서 그 친구가 다른 결혼식장에 있었다.',
-    afterContent:'처음에는 날짜를 잘못 본 줄 알았다. 사진을 확대해 보고, 올라온 시간을 다시 확인했다.\n\n내 결혼식이 끝난 다음 날도 아니었다. 같은 날, 다른 시간대 식장이었다.\n\n사진 속 표정이 너무 밝아서 오히려 무슨 말을 해야 할지 모르겠더라.'
-  };
-  const actual=source.originals.find(x=>x.id===dbId(p.id));
-  if(!old||!actual||p.title!==old.title||p.beforeContent!==old.beforeContent||p.afterContent!==old.afterContent||p.gateLine!==old.gateLine)return p;
-  return {...p,beforeContent:actual.beforeContent,afterContent:actual.afterContent,gateLine:actual.gateLine,hook:actual.hook,coverDetail:actual.coverDetail,fadeHeight:actual.fadeHeight};
-}
-export default {
-  async fetch(request, env) {
-    const url=new URL(request.url), path=url.pathname;
-    if(path==='/api/ssul_posts') {
+export default{async fetch(request,env){const url=new URL(request.url),path=url.pathname;
+  try{
+    const access=path.match(/^\/studio\/access\/([A-Za-z0-9_-]{20,100})\/?$/);if(access){if(!await validStudioToken(access[1]))return html('<!doctype html><meta charset="utf-8"><title>404</title>',404);return new Response(null,{status:302,headers:{Location:'/studio/','Set-Cookie':`ssul_studio=${encodeURIComponent(access[1])}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Strict`,'Cache-Control':'no-store'}})}
+    if(path==='/studio'||path==='/studio/'){const token=await requireStudio(request);if(!token)return html('<!doctype html><meta charset="utf-8"><title>404</title>',404);const assetReq=new Request(new URL('/studio.html',url),request);const res=await env.ASSETS.fetch(assetReq);let text=await res.text();text=text.replace('<select id="story-select" aria-label="이야기 선택">','<select id="story-select" aria-label="이야기 선택" onchange="location.href=\'/studio/?story=\'+encodeURIComponent(this.value)">');try{const listing=await studioCall(token,{action:'drafts_list'}),requested=url.searchParams.get('story')||'';const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const options=(listing.drafts||[]).map(d=>`<option value="${esc(d.id)}"${requested===String(d.id)?' selected':''}>${d.published?'게시됨':'초안'} · ${esc(d.title||'제목 없는 원고')}</option>`).join('');text=text.replace(/(<select id="story-select"[^>]*>)[\s\S]*?(<\/select>)/,`$1${options}$2`)}catch{}return new Response(text,{status:res.status,headers:{...Object.fromEntries(res.headers),'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}})}
+    if(path==='/studio/preview/'){const token=await requireStudio(request);if(!token)return html('<!doctype html><meta charset="utf-8"><title>404</title>',404);const id=(url.searchParams.get('id')||'preview').replace(/[^\w-]/g,'').slice(0,80)||'preview';const p={id,title:'본문 미리보기',category:'일상',teaser:'',beforeContent:'',afterContent:'',gateLine:'',views:0,fadeHeight:180,date:'',tags:[]};let out=renderStory(p,[p]).replace('"trackViews":true','"trackViews":false');return html(out,200,{'X-Robots-Tag':'noindex, nofollow'})}
+    if(path.startsWith('/api/')&&!['/api/ssul_posts'].includes(path)&&!/^\/api\/stories\//.test(path)){const token=await requireStudio(request);if(!token)return json({error:'Not found'},404);return await studioApi(request,path,token)}
+    if(path==='/api/ssul_posts'){
       if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':url.origin,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'apikey,content-type'}});
-      try {
-        if(request.method==='POST') {
-          if(request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return new Response('Forbidden',{status:403});
-          const body=await request.json(); if(body.action!=='view'||!body.id)return new Response('Invalid request',{status:400});
-          const out=await data(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',id:dbId(body.id)})});
-          return Response.json(out,{headers:{'Cache-Control':'no-store'}});
-        }
-        if(request.method!=='GET')return new Response('Method not allowed',{status:405});
-        const query=new URLSearchParams(url.search);if(query.has('id'))query.set('id',dbId(query.get('id')));
-        const out=await data(API+'?'+query.toString());
-        if(out.posts)out.posts=out.posts.map(originalContent);if(out.post)out.post=originalContent(out.post);
-        return Response.json(out,{headers:{'Cache-Control':'no-store'}});
-      } catch {return Response.json({ok:false,error:'게시글 서버 연결 실패'},{status:502});}
+      try{if(request.method==='POST'){if(request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return new Response('Forbidden',{status:403});const body=await request.json();if(body.action!=='view'||!body.id)return new Response('Invalid request',{status:400});const out=await data(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',id:dbId(body.id)})});return Response.json(out,{headers:{'Cache-Control':'no-store'}})}if(request.method!=='GET')return new Response('Method not allowed',{status:405});const query=new URLSearchParams(url.search);if(query.has('id'))query.set('id',dbId(query.get('id')));const out=await data(API+'?'+query.toString());if(out.posts)out.posts=out.posts.map(originalContent);if(out.post)out.post=originalContent(out.post);return Response.json(out,{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({ok:false,error:'게시글 서버 연결 실패'},{status:502})}
     }
-    const view=path.match(/^\/api\/stories\/([^/]+)\/view\/?$/);
-    if(view){
-      if(request.method!=='POST')return new Response('Method not allowed',{status:405,headers:{Allow:'POST'}});
-      const origin=request.headers.get('Origin');if(origin&&origin!==url.origin)return new Response('Forbidden',{status:403});
-      const id=dbId(decodeURIComponent(view[1])); if(!/^[\w-]{1,100}$/.test(id))return new Response('Invalid story ID',{status:400});
-      try{const out=await data(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',id})});return Response.json(out,{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({ok:false,error:'조회수를 갱신하지 못했습니다.'},{status:502});}
-    }
-    if(path==='/post'||path==='/post.html'){
-      const id=url.searchParams.get('id');if(!id)return Response.redirect(url.origin+'/',302);
-      return Response.redirect(new URL(storyUrl(id),url.origin).href,302);
-    }
-    const article=path.match(/^\/stories\/([^/]+)\/?$/), home=path==='/'||/^\/page\/\d+\/?$/.test(path);
-    if(!home&&!article)return env.ASSETS.fetch(request);
-    if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
-    try{
-      const result=await data(API+'?limit=100'), posts=(result.posts||[]).map(originalContent);
-      if(home)return html(request.method==='HEAD'?'':renderHome(posts,url));
-      const id=dbId(decodeURIComponent(article[1]));
-      let post=posts.find(p=>dbId(p.id)===id);
-      if(!post){try{post=originalContent((await data(API+'?id='+encodeURIComponent(id))).post);}catch{return html('<!doctype html><html lang="ko"><meta charset="utf-8"><title>글을 찾을 수 없어요 · 썰판</title><p>글을 찾을 수 없어요.</p><a href="/">전체 글</a></html>',404);}}
-      return html(request.method==='HEAD'?'':renderStory(post,posts));
-    }catch(error){
-      console.error('ssul public backend:',error.message);
-      // Fail visibly rather than silently displaying invented fallback stories.
-      return html('<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>연결 확인 · 썰판</title><p>게시글 서버에 연결하지 못했어요. 잠시 후 새로고침해 주세요.</p><a href="/">다시 시도</a></html>',503);
-    }
-  }
-};
+    const view=path.match(/^\/api\/stories\/([^/]+)\/view\/?$/);if(view){if(request.method!=='POST')return new Response('Method not allowed',{status:405,headers:{Allow:'POST'}});const origin=request.headers.get('Origin');if(origin&&origin!==url.origin)return new Response('Forbidden',{status:403});const id=dbId(decodeURIComponent(view[1]));if(!/^[\w-]{1,100}$/.test(id))return new Response('Invalid story ID',{status:400});try{const out=await data(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'view',id})});return Response.json(out,{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({ok:false,error:'조회수를 갱신하지 못했습니다.'},{status:502})}}
+    if(path==='/post'||path==='/post.html'){const id=url.searchParams.get('id');if(!id)return Response.redirect(url.origin+'/',302);return Response.redirect(new URL(storyUrl(id),url.origin).href,302)}
+    const article=path.match(/^\/stories\/([^/]+)\/?$/),home=path==='/'||/^\/page\/\d+\/?$/.test(path);if(!home&&!article)return env.ASSETS.fetch(request);if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
+    try{const result=await data(API+'?limit=100'),posts=(result.posts||[]).map(originalContent);if(home)return html(request.method==='HEAD'?'':renderHome(posts,url));const id=dbId(decodeURIComponent(article[1]));let post=posts.find(p=>dbId(p.id)===id);if(!post){try{post=originalContent((await data(API+'?id='+encodeURIComponent(id))).post)}catch{return html('<!doctype html><html lang="ko"><meta charset="utf-8"><title>글을 찾을 수 없어요 · 썰판</title><p>글을 찾을 수 없어요.</p><a href="/">전체 글</a></html>',404)}}return html(request.method==='HEAD'?'':renderStory(post,posts))}catch(error){console.error('ssul public backend:',error.message);return html('<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>연결 확인 · 썰판</title><p>게시글 서버에 연결하지 못했어요. 잠시 후 새로고침해 주세요.</p><a href="/">다시 시도</a></html>',503)}
+  }catch(error){console.error('ssul worker:',error?.message||error);const status=Number(error?.status)||500;return path.startsWith('/api/')?json({error:error?.message||'요청을 처리하지 못했어요.'},status):html('<!doctype html><meta charset="utf-8"><title>오류</title><p>요청을 처리하지 못했어요.</p>',status)}
+}};
