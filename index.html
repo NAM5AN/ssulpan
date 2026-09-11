@@ -39,6 +39,7 @@
         <button id="prevHero" aria-label="이전 추천 글">이전</button>
         <span id="heroCount">1 / 3</span>
         <button id="nextHero" aria-label="다음 추천 글">다음</button>
+        <span class="sr-only">배너 자동재생</span>
         <button id="toggleAuto" aria-pressed="false">일시정지</button>
       </div>
     </section>
@@ -63,6 +64,7 @@
         <div id="categoryChips" class="chips"></div>
         <div id="postGrid" class="post-grid"></div>
         <div id="emptyState" class="empty" hidden>조건에 맞는 이야기가 없습니다.</div>
+        <div id="feedPager" class="feed-pager"></div>
       </div>
 
       <aside class="sidebar">
@@ -80,22 +82,14 @@
         </section>
       </aside>
     </section>
-  </main>
 
-  <dialog id="articleDialog" class="article-dialog">
-    <article>
-      <button id="closeArticle" class="close" aria-label="닫기">×</button>
-      <span id="articleCategory" class="eyebrow"></span>
-      <h2 id="articleTitle"></h2>
-      <p id="articleMeta" class="meta"></p>
-      <div id="articleBody" class="article-body"></div>
-      <div id="articleTags" class="tag-cloud"></div>
-    </article>
-  </dialog>
+    <div id="categorySections" class="category-sections"></div>
+  </main>
 
   <footer>
     <div class="wrap footer-row"><a class="brand small" href="/">썰판</a><span>이야기를 모으는 곳</span><a href="#main">맨 위로</a></div>
   </footer>
+  <script src="/data.js"></script>
   <script src="/app.js" defer></script>
 </body>
 </html>
