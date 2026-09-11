@@ -7,7 +7,7 @@
   <title>썰판 채널 제작실</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
+<body class="studio-page">
   <main class="studio-shell">
     <div class="studio-top">
       <a class="brand" href="/">썰판</a>
@@ -15,17 +15,16 @@
       <span id="saveStatus" class="status">저장 안 됨</span>
     </div>
 
-    <div class="notice">이 페이지는 메인 화면에 진입 링크를 노출하지 않습니다. Claude API는 서버 함수(`/api/generate`)를 통해 호출하며 키를 브라우저에 저장하지 않습니다.</div>
+    <section class="studio-plain story-select-row">
+      <label for="storySelect"><b>이야기 선택</b></label>
+      <div class="studio-actions">
+        <select id="storySelect" class="grow"></select>
+        <button id="newDraft">새 원고</button>
+      </div>
+    </section>
 
-    <section class="studio-card">
+    <section class="studio-plain">
       <div class="studio-grid">
-        <div class="field full">
-          <label for="storySelect">이야기 선택</label>
-          <div class="studio-actions">
-            <select id="storySelect" style="flex:1"></select>
-            <button id="newDraft">새 원고</button>
-          </div>
-        </div>
         <div class="field">
           <label for="title">제목</label>
           <input id="title" placeholder="게시글 제목" />
@@ -35,38 +34,96 @@
           <select id="category"><option>직장생활</option><option>인간관계</option><option>일상</option></select>
         </div>
         <div class="field full">
-          <label for="seed">원본 소재 / 상황 설명</label>
-          <textarea id="seed" placeholder="원본 썰이나 핵심 사건을 적어 주세요."></textarea>
-        </div>
-        <div class="field full">
-          <div class="studio-actions"><button id="generate" class="primary">Claude로 원고 생성</button><span id="generateStatus" class="status"></span></div>
+          <label for="sourceText">참고할 소재</label>
+          <textarea id="sourceText" class="source-box" placeholder="원본 썰, 상황 설명, 커뮤니티 글 내용을 붙여 넣어 주세요."></textarea>
         </div>
       </div>
     </section>
 
-    <section class="studio-card">
-      <h2>미리 보여줄 내용</h2>
-      <div class="field"><textarea id="previewText"></textarea><div id="previewCount" class="char-count">0자</div></div>
-      <div class="studio-actions"><button data-copy="previewText">내용 복사</button><button data-rewrite="previewText">이 부분 다시 쓰기</button></div>
+    <section class="studio-plain request-panel">
+      <h2>작성 요청</h2>
+      <div class="field">
+        <textarea id="notes" class="request-box" placeholder="예: 신입이 건넨 말에서 시작하고, 대화가 자연스럽게 이어졌으면 좋겠어."></textarea>
+      </div>
+      <div class="option-grid">
+        <div class="field"><label for="tone">말투</label><select id="tone"><option value="친구에게 말하듯">친구에게 말하듯</option><option value="담담하게">담담하게</option><option value="커뮤니티 구어체">커뮤니티 구어체</option><option value="짧고 빠르게">짧고 빠르게</option></select></div>
+        <div class="field"><label for="length">전체 분량</label><select id="length"><option value="1200">1,200자 안팎</option><option value="2000" selected>2,000자 안팎</option><option value="3000">3,000자 안팎</option><option value="4500">4,500자 안팎</option></select></div>
+        <div class="field"><label for="tension">긴장감</label><select id="tension"><option value="낮게">낮게</option><option value="보통">보통</option><option value="높게" selected>높게</option></select></div>
+        <div class="field"><label for="dialogue">대화 비중</label><select id="dialogue"><option value="적게">적게</option><option value="보통" selected>보통</option><option value="많게">많게</option></select></div>
+      </div>
+      <div class="studio-actions generate-row"><button id="generate" class="primary big">클로드로 원고 만들기</button><span id="generateStatus" class="status"></span></div>
+      <p class="helper">한 이야기로 작성한 뒤 광고 전·후로 나눠 보여줍니다. 결과를 확인하고 원고에 반영할 수 있어요.</p>
     </section>
 
-    <section class="studio-card">
-      <h2>광고 후 보여줄 내용</h2>
-      <div class="field"><textarea id="afterText"></textarea><div id="afterCount" class="char-count">0자</div></div>
-      <div class="studio-actions"><button data-copy="afterText">내용 복사</button><button data-rewrite="afterText">이 부분 다시 쓰기</button></div>
+    <section class="studio-plain">
+      <div class="field">
+        <label for="teaser">목록 소개</label>
+        <input id="teaser" placeholder="목록에 표시할 짧은 소개" />
+      </div>
+      <div class="field title-candidates-field">
+        <label>제목 후보</label>
+        <div id="titleCandidates" class="title-candidates"></div>
+      </div>
     </section>
 
-    <section class="studio-card">
+    <section class="studio-plain manuscript-section">
+      <div class="section-line"><h2>미리 보여줄 내용</h2><span id="beforeCount" class="char-count">0자</span></div>
+      <div class="field"><textarea id="beforeContent"></textarea></div>
+      <div class="studio-actions"><button data-copy="beforeContent">내용 복사</button><button data-rewrite="beforeContent">이 부분 다시 쓰기</button></div>
+    </section>
+
+    <section class="studio-plain manuscript-section">
+      <div class="section-line"><h2>광고 후 보여줄 내용</h2><span id="afterCount" class="char-count">0자</span></div>
+      <div class="field"><textarea id="afterContent"></textarea></div>
+      <div class="studio-actions"><button data-copy="afterContent">내용 복사</button><button data-rewrite="afterContent">이 부분 다시 쓰기</button></div>
+
+      <div class="field rewrite-field">
+        <label for="rewriteInstruction">다시 쓸 때 반영할 요청</label>
+        <input id="rewriteInstruction" placeholder="예: 대사를 줄이고 마지막 두 문장을 더 긴장감 있게" />
+      </div>
+      <p class="helper">전체 원고를 참고하면서 선택한 구간만 수정합니다.</p>
+      <div class="studio-actions review-actions">
+        <button id="reviewContext">앞뒤 내용 점검</button>
+        <button id="suggestBreak">끊을 위치 추천</button>
+        <button id="copyAll">전체 본문 복사</button>
+      </div>
+      <div id="reviewResult" class="review-result" hidden></div>
+    </section>
+
+    <details class="studio-details">
+      <summary>인물·사건 메모</summary>
+      <div class="field"><textarea id="storyBible" placeholder="인물 관계, 사건 순서, 이후 수정에서도 유지할 설정"></textarea></div>
+    </details>
+
+    <section class="studio-plain">
+      <div class="field">
+        <label for="gateLine">이어 읽기 문구</label>
+        <input id="gateLine" placeholder="메일을 연 순간, 날짜부터 이상했다." />
+      </div>
+      <div class="field">
+        <div class="section-line"><label for="gradient">그라데이션 길이</label><span id="gradientValue">180px</span></div>
+        <input id="gradient" type="range" min="80" max="420" value="180" />
+        <div class="range-labels"><span>짧게</span><span>길게</span></div>
+      </div>
+      <p class="helper">현재 이어 읽기는 광고 없이 열립니다.</p>
+    </section>
+
+    <section class="studio-plain social-section">
+      <h2>인스타 원고</h2>
       <div class="studio-grid">
-        <div class="field full"><label for="rewriteGuide">다시 쓸 때 반영할 요청</label><textarea id="rewriteGuide" style="min-height:100px" placeholder="톤, 사건 순서, 말투 등 수정 요청"></textarea></div>
-        <div class="field full"><label for="memo">인물·사건 메모</label><textarea id="memo" style="min-height:120px"></textarea></div>
-        <div class="field"><label for="continueLine">이어 읽기 문구</label><input id="continueLine" placeholder="메일을 연 순간, 날짜부터 이상했다." /></div>
-        <div class="field"><label for="tags">태그</label><input id="tags" placeholder="#회사썰 #직장생활" /></div>
-        <div class="field full"><label for="gradient">그라데이션 길이 <span id="gradientValue">180px</span></label><div class="range-row"><input id="gradient" type="range" min="80" max="420" value="180" /></div></div>
+        <div class="field full"><label for="hook">표지 제목</label><textarea id="hook" class="shortarea" placeholder="3~4줄 표지 제목"></textarea></div>
+        <div class="field full"><label for="coverDetail">표지 하단 문장</label><input id="coverDetail" /></div>
+        <div class="field full"><label for="caption">인스타그램 캡션</label><textarea id="caption" class="shortarea"></textarea></div>
+        <div class="field full"><label for="hashtags">해시태그</label><input id="hashtags" placeholder="#썰판 #썰 ..." /></div>
+      </div>
+      <div class="studio-actions">
+        <button id="openInstagram">인스타 표지 보기</button>
+        <button id="openManuscript">장별 원고 · 5장</button>
       </div>
     </section>
 
-    <section class="studio-card">
+    <section class="studio-plain bottom-actions">
+      <p id="loadedMessage" class="helper"></p>
       <div class="studio-actions">
         <button id="exportDraft">원고 내보내기</button>
         <button id="saveDraft">원고 저장</button>
@@ -75,6 +132,7 @@
       </div>
     </section>
   </main>
+  <script src="/data.js"></script>
   <script src="/studio.js" defer></script>
 </body>
 </html>
