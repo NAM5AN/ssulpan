@@ -16,7 +16,7 @@
 - `public/studio/index.html`: 살아남은 `public/studio.js`가 요구하는 DOM ID와 당시 스크린샷을 기준으로 복원
 - `public/cover.js`: `window.SseolzipCover.draw` 호출 규약 및 1080×1920 주황/청록 표지 스크린샷을 기준으로 복원
 - `public/site.css`, `public/reader.js`, `public/public.js`, `public/404.html`
-- `build.py` — `.sites-runtime/assets.json` 생성
+- `build.py` 및 생성물 `.sites-runtime/assets.json`
 - `db/schema.sql`: 살아남은 SQL 질의의 테이블/컬럼을 역추론하여 복원
 
 이 파일들은 **원본 바이트 사본이라고 주장하지 않습니다.** 원본 사본은 상위 `recovered/sseolzip/implementation-review`와 `prompt-v2`에 별도 보존되어 있습니다.
@@ -26,11 +26,11 @@
 npm test
 ```
 
-현재 복구 테스트는 **5/5 통과**합니다. 6개 초기 글, 홈 구조, 계속읽기 화면, 제작실 DOM 계약, 빌드 자산을 검사합니다.
+테스트는 6개 초기 글, 홈 구조, 계속읽기 화면, 제작실 DOM 계약, 빌드 자산을 검사합니다.
 
 ## 아직 데이터 덤프 자체가 없는 것
 - 당시 D1 실제 행 데이터(원고/버전/작업 기록/게시 데이터/설정)
 - R2/BUCKET 실제 이미지 객체
 - 실제 누적 조회수
 
-이 세 가지는 코드만으로 원본 값을 생성할 수 없으므로, 원본 데이터가 발견되기 전에는 복구값을 임의 생성하지 않습니다.
+이 세 가지는 코드만으로 원본 값을 생성할 수 없으므로, 원본 데이터가 발견되기 전에는 별도 `recovered-data`로 취급해야 합니다.

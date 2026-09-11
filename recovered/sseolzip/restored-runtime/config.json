@@ -1,0 +1,12 @@
+{
+  "siteName": "썰판",
+  "coverBrand": "썰집",
+  "pageSize": 6,
+  "heroCount": 3,
+  "categories": ["직장생활", "인간관계", "일상"],
+  "ads": {},
+  "reader": {
+    "continueLabel": "계속 읽기",
+    "noAdNotice": "현재는 광고 없이 이어 읽을 수 있어요."
+  }
+}

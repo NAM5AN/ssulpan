@@ -1,0 +1,1 @@
+{"name":"sseolzip-restored-runtime","private":true,"type":"module","scripts":{"build":"python3 build.py","test":"python3 build.py && node --test tests/*.test.mjs"}}
