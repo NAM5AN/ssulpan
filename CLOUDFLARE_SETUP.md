@@ -60,3 +60,5 @@ DNS를 Cloudflare에서 관리하면 HTTPS 인증서도 Cloudflare가 처리합�
 - DB/Storage: 기존 `cheheomdan` Supabase 프로젝트의 `ssul_*`
 
 브라우저에는 Supabase URL과 publishable key만 포함됩니다. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, service-role/secret key는 Supabase 서버 함수에만 있습니다.
+
+<!-- Initial Cloudflare Pages deployment trigger -->
