@@ -7,49 +7,44 @@
 프로젝트명: `ssulpan`
 배포 폴더: `dist`
 
-## 1. Cloudflare API Token 만들기
-
-Cloudflare Dashboard → 프로필/계정 → API Tokens → Create Token → Create Custom Token.
-
-권한:
-- Account → Cloudflare Pages → Edit
-
-리소스:
-- 현재 사용하는 Cloudflare 계정만 선택
-
-토큰 이름 예시: `ssulpan-github-actions`
-
-토큰 값은 생성 직후 한 번만 보이므로 복사해 둡니다. 저장소 파일이나 채팅에 붙여 넣지 않습니다.
-
-## 2. Cloudflare Account ID 확인
-
-Cloudflare Dashboard에서 현재 계정의 Account ID를 확인합니다. Dashboard URL의 계정 식별자 또는 계정 Overview/Workers & Pages의 Account ID를 사용할 수 있습니다.
-
-## 3. GitHub Secrets 2개 등록
+## 네가 입력할 것은 1개뿐
 
 GitHub → `NAM5AN/ssulpan` → Settings → Secrets and variables → Actions → New repository secret.
 
-다음 두 개를 만듭니다.
+이 Secret 하나만 만듭니다.
 
-- `CLOUDFLARE_API_TOKEN` = 위에서 만든 Cloudflare API Token
-- `CLOUDFLARE_ACCOUNT_ID` = Cloudflare Account ID
+- 이름: `CLOUDFLARE_API_TOKEN`
+- 값: Cloudflare에서 발급한 API Token
 
-`GITHUB_TOKEN`은 GitHub Actions가 자동으로 제공하므로 직접 만들 필요 없습니다.
+`CLOUDFLARE_ACCOUNT_ID`는 **입력하지 않습니다.** 워크플로가 Cloudflare API에서 토큰이 접근할 수 있는 계정을 자동으로 찾아 설정합니다.
 
-## 4. 자동배포
+## Cloudflare API Token 권한
 
-Secrets 등록 후 GitHub의 Actions 탭에서 `Deploy ssulpan to Cloudflare Pages`를 한 번 `Run workflow` 하거나 `main`에 새 커밋을 푸시합니다.
+Cloudflare Dashboard → API Tokens → Create Token → Create Custom Token.
 
-워크플로가:
-1. 공개 사이트에 필요한 파일만 `dist/`에 복사
-2. `ssulpan` Pages 프로젝트가 없으면 생성 시도
-3. `dist/`를 Cloudflare Pages에 배포
+권한은 아래 2개:
+- Account → Cloudflare Pages → Edit
+- Account → Account Settings → Read
+
+Account Resources는 **현재 사용할 Cloudflare 계정 1개만** 선택합니다. 여러 계정을 허용하면 자동 계정 선택이 모호해져 배포가 중단되도록 해두었습니다.
+
+토큰 이름 예시: `ssulpan-github-actions`
+
+토큰 값은 생성 직후 한 번만 보이므로 GitHub Secret에 바로 넣습니다. 저장소 파일이나 채팅에는 넣지 않습니다.
+
+## 자동배포
+
+Secret 등록 후 `main`에 커밋이 생기면 자동으로:
+1. Cloudflare Account ID 자동 탐색
+2. 공개 사이트 파일만 `dist/`에 복사
+3. `ssulpan` Pages 프로젝트가 없으면 생성 시도
+4. `dist/`를 Cloudflare Pages에 배포
 
 합니다.
 
-이후에는 `main`에 커밋될 때마다 자동 배포됩니다.
+최초 Secret 등록 자체는 GitHub Actions 실행 이벤트가 아니므로, Secret을 넣은 뒤 한 번만 `넣음`이라고 알려주면 제가 `main`에 배포 트리거 커밋을 넣어 첫 배포를 시작할 수 있습니다. 이후부터는 코드 수정 커밋마다 자동 배포됩니다.
 
-## 5. 커스텀 도메인
+## 커스텀 도메인
 
 첫 배포 성공 후 Cloudflare → Workers & Pages → `ssulpan` → Custom domains에서 도메인을 추가합니다.
 
