@@ -16,24 +16,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Build static bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf dist
-          mkdir -p dist
-          cp \
-            index.html app.js config.js data.js styles.css \
-            post.html post.js \
-            studio.html studio.js \
-            instagram.html instagram.js \
-            manuscript.html manuscript.js \
-            _headers _redirects robots.txt \
-            dist/
+      - name: Build from original UI, with source hash checks
+        run: python3 scripts/build-original.py
+
+      - name: Verify original UI, full stories and backend adapter
+        run: node --test tests/original-ui.test.mjs
 
       - name: Discover Cloudflare account automatically
         shell: bash
@@ -45,31 +37,18 @@ jobs:
             echo "CLOUDFLARE_API_TOKEN repository secret is missing." >&2
             exit 1
           fi
-
           RESPONSE="$(curl -fsS \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json" \
             "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
-
           ACCOUNT_ID="$(python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("result") or []; print(r[0].get("id", "") if len(r)==1 else "")' <<<"$RESPONSE")"
           ACCOUNT_COUNT="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("result") or []))' <<<"$RESPONSE")"
-
           if [ "$ACCOUNT_COUNT" != "1" ] || [ -z "$ACCOUNT_ID" ]; then
             echo "The token must be scoped to exactly one Cloudflare account. Found: $ACCOUNT_COUNT" >&2
             exit 1
           fi
-
           echo "CLOUDFLARE_ACCOUNT_ID=$ACCOUNT_ID" >> "$GITHUB_ENV"
           echo "Cloudflare account detected automatically."
-
-      - name: Create Pages project if needed
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@latest pages project create ssulpan --production-branch=main >/tmp/ssul-create.log 2>&1 || true
-          cat /tmp/ssul-create.log
 
       - name: Deploy to Cloudflare Pages
         shell: bash
@@ -77,7 +56,21 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
-          npx --yes wrangler@latest pages deploy dist \
+          npx --yes wrangler@4.131.0 pages deploy dist \
             --project-name=ssulpan \
             --branch=main \
             --commit-hash="$GITHUB_SHA"
+
+      - name: Verify deployed original assets and all public routes
+        run: python3 scripts/verify-live.py
+
+      - name: Publish verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-ui-verification
+          path: |
+            dist/ui-provenance.json
+            live-verification.json
+          if-no-files-found: warn
+          retention-days: 7
