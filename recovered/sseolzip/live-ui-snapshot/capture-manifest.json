@@ -1,0 +1,903 @@
+{
+  "origin": "https://sseolzip.tnwjd2854.chatgpt.site",
+  "capturedAt": "2026-09-11T15:30:30.611134+00:00",
+  "contentModified": false,
+  "resources": [
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/",
+      "path": "index.html",
+      "bytes": 13389,
+      "sha256": "9664a3406bbe5f35bdc12dc94630ad173b47009b338fe7e48e16a8fe0f8cfca1"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/studio/",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/favicon.png?v=ssulpan-1",
+      "status": 200,
+      "contentType": "image/png",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/favicon.png?v=ssulpan-1",
+      "path": "favicon__q_07c7777e85.png",
+      "bytes": 853922,
+      "sha256": "33797ddf5d2cf266876fd4b76fe5dd2d4f32917965c33054af36d6b2ac9e7f62"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/style.css",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/style.css",
+      "path": "style.css",
+      "bytes": 17638,
+      "sha256": "8e583f4e488551dff5b274143a035d0ae9ecf0c3bf9656740c4a8bfe4522f073"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/community.css",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/community.css",
+      "path": "community.css",
+      "bytes": 15336,
+      "sha256": "1203843a47f034083a1ec6c58f2a54bddbbe0dad1b3d60c505eb0f571fbf823f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/brand/ssulpan-logo.png",
+      "status": 200,
+      "contentType": "image/png",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/brand/ssulpan-logo.png",
+      "path": "brand/ssulpan-logo.png",
+      "bytes": 897538,
+      "sha256": "4a2ff7f8e8bd386271376f0e120daf69fc8c6bf056c865c61d0771803ebbc786"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C",
+      "path": "index__q_5dfaa6510d.html",
+      "bytes": 8452,
+      "sha256": "ce4df6b2b2929c591afa1277a6748d0e6ad32ae30274d50ead2173946dab8193"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84",
+      "path": "index__q_8b5adecb3c.html",
+      "bytes": 8457,
+      "sha256": "5eec5411f5a74ecbc3911277fc62dda109727c0aedbb04e7aadf147f216a5513"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81",
+      "path": "index__q_1c794313a3.html",
+      "bytes": 8298,
+      "sha256": "86866b9f2ecf4289bfa875e6b357122025e5cfc9d30aa1c4ac856c65b1a246bf"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?order=popular",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?order=popular",
+      "path": "index__q_7c48e63575.html",
+      "bytes": 10017,
+      "sha256": "2f45514eb3a6c90f64b25bc1bc03d747454997b9bca544e6f32f156bb3ab1dba"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/stories/001/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/stories/001/",
+      "path": "stories/001/index.html",
+      "bytes": 9089,
+      "sha256": "6665a8fcc911aa5234357a9b1696ed7da3b905a5e412474f5630958ef719d40f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/community/office.png",
+      "status": 200,
+      "contentType": "image/png",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/community/office.png",
+      "path": "community/office.png",
+      "bytes": 2080217,
+      "sha256": "68e0fdb9d9216df674f5710c74f6e6d8d31824df1eb8140a5eef137cd92a9770"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/stories/002/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/stories/002/",
+      "path": "stories/002/index.html",
+      "bytes": 8779,
+      "sha256": "0a9da6469b6fb384d9183b6d60af67042b9b22ad33864b4a073bb89216a9adcb"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/community/friends.png",
+      "status": 200,
+      "contentType": "image/png",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/community/friends.png",
+      "path": "community/friends.png",
+      "bytes": 1892866,
+      "sha256": "15e543d3dda76f419c82197fad5072f07f2d69dfd2e9c172aec9a1598a5c0e7f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/stories/003/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/stories/003/",
+      "path": "stories/003/index.html",
+      "bytes": 6568,
+      "sha256": "a03e9b435a7a4da1b15666c3cd4396907821b2c87586ea576068b11c5270d426"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/community/night.png",
+      "status": 200,
+      "contentType": "image/png",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/community/night.png",
+      "path": "community/night.png",
+      "bytes": 1875450,
+      "sha256": "da60397ed9d5006dddd125aa2d921d50d0be4a743e2b05b6a1263ac8311f55ff"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?view=list",
+      "path": "index__q_01d419510e.html",
+      "bytes": 13389,
+      "sha256": "f6fbde7d93c6bc6f3c6e4351dbab63c8a0cb4c4541974e2808c42169b4c90624"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?order=oldest&view=list",
+      "path": "index__q_0383acd562.html",
+      "bytes": 13491,
+      "sha256": "7650cd47dd1130bd2695eebe66f4ea1b9370c7fd7074f694784379d0fecda634"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?order=popular&view=list",
+      "path": "index__q_b55ca62f27.html",
+      "bytes": 10017,
+      "sha256": "3fcd85f91cb5d2c7bd5e0321a941f270539abfbe351e1b5532997160788127f6"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?view=cards",
+      "path": "index__q_fbed1247c1.html",
+      "bytes": 16820,
+      "sha256": "afbe299fa25805e79e11d1ed807f85eccd85d54b0f28390f12a5276f276973b3"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "path": "index__q_502d71d03a.html",
+      "bytes": 8452,
+      "sha256": "ff67190ee27d71b02416cc59e3432699f835d65aed7efada35304ad000994a07"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=list",
+      "path": "index__q_489f4fcf3d.html",
+      "bytes": 8457,
+      "sha256": "c23605730f607a924f1a5dca52bda7b0700d387466233e6efed2d9bb66dc40c5"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&view=list",
+      "path": "index__q_4786f3d201.html",
+      "bytes": 8298,
+      "sha256": "b69a2a0baa894ebc50304b48e3180e111be428c3c7ebcdb4647b1dd8644eb63e"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/stories/004/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/stories/004/",
+      "path": "stories/004/index.html",
+      "bytes": 8371,
+      "sha256": "dac3bcc3c016cf369e55853688c9e52d16a95e29edbe3cce890d5411070ec9c3"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/stories/005/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/stories/005/",
+      "path": "stories/005/index.html",
+      "bytes": 6282,
+      "sha256": "5392e25268d7ca82f26fb4af0d88dec7593253b473fa12ec17a1533d4a527f43"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/stories/006/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/stories/006/",
+      "path": "stories/006/index.html",
+      "bytes": 6423,
+      "sha256": "87c4bd1026258764b91866d83375b5857975bca1b97d7da04e8916bc62f68a89"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0",
+      "path": "index__q_3953a172f8.html",
+      "bytes": 8605,
+      "sha256": "82b9539983d831ccd3927d34af156fba4223df6466f3afbf65871b9ffbc189e2"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0",
+      "path": "index__q_068f2321c1.html",
+      "bytes": 8610,
+      "sha256": "5f7077d6d4222f0c86fc3e8eb04e11a8307534908a5b6b96d435452f7f64d762"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0",
+      "path": "index__q_83a45783a6.html",
+      "bytes": 8553,
+      "sha256": "c5f1abfa16311e4eec8a11d2fc73be4385ee74aab608060621fb71af4e6c727e"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C",
+      "path": "index__q_b86bd06604.html",
+      "bytes": 8259,
+      "sha256": "e890c87d5172dac4d099540898d6be51144268e8074690052c3ada0a43115a18"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84",
+      "path": "index__q_447583bce4.html",
+      "bytes": 8259,
+      "sha256": "aa56e327121bbf6f0cd6eee74f9ad74fc0a7003806443087e2885d485123d40b"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D",
+      "path": "index__q_0e39bdf9da.html",
+      "bytes": 8187,
+      "sha256": "7627e97ab3bc030f2920709f4147212e81058f43c5e9dac84f22baaa4b651b68"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84",
+      "path": "index__q_1bda575bdf.html",
+      "bytes": 8277,
+      "sha256": "bd83d55d88fe6f8d42be3b9697b2ff849aa48956b725d7dba1a3d9481aba9bac"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A4%91%EA%B3%A0%EA%B1%B0%EB%9E%98",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A4%91%EA%B3%A0%EA%B1%B0%EB%9E%98",
+      "path": "index__q_92a0ff25a8.html",
+      "bytes": 8220,
+      "sha256": "43da1b3e54a2a8024730ea44ee4bd4ce944ecacf4df245feb3771bc1fc09f2d8"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B0%80%EC%A1%B1%EC%8D%B0",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B0%80%EC%A1%B1%EC%8D%B0",
+      "path": "index__q_cf49197bfa.html",
+      "bytes": 8130,
+      "sha256": "1448f8504c54e0d8f1b0ca365f7fa08109a6b8eb62faf520e61cf1c90fc2d758"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%8B%A0%EC%9E%85",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%8B%A0%EC%9E%85",
+      "path": "index__q_1ecebc9c6f.html",
+      "bytes": 8071,
+      "sha256": "7801b6d494a74f2c210e0a449081ede9b4de908c3baed086def1ea8873ce06d5"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%9D%B8%EA%B3%B5%EA%B0%90",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%9D%B8%EA%B3%B5%EA%B0%90",
+      "path": "index__q_b8e6e6a432.html",
+      "bytes": 8341,
+      "sha256": "096306eecd63e11292eff18b31131e46a98f45aaebc710a3a0f0c59dca9a372f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%83%9D%EC%9D%BC%EC%84%A0%EB%AC%BC",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%83%9D%EC%9D%BC%EC%84%A0%EB%AC%BC",
+      "path": "index__q_eccd3d129f.html",
+      "bytes": 8238,
+      "sha256": "a9f2197578fe855341d1e39a3b88cfe9b66829415a3cc3b7df430099fe526e7f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/community.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/community.js",
+      "path": "community.js",
+      "bytes": 3999,
+      "sha256": "ce976232f7af8634c90e36fdc09a46ed328367047dca0af72dd7e414e2a559a7"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/cdn-cgi/challenge-platform/scripts/jsd/main.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/cdn-cgi/challenge-platform/h/g/scripts/jsd/330e41bb475c/main.js",
+      "path": "cdn-cgi/challenge-platform/scripts/jsd/main.js",
+      "bytes": 21512,
+      "sha256": "cdcc30f9f050dd0d2e7f326801b7d464b6149b4192a255982c137fc3dc43c6e5"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=oldest&view=list",
+      "path": "index__q_918a8983c2.html",
+      "bytes": 8554,
+      "sha256": "11afd7b526d53afd6a500738a88039e724a027584db4ee5d3edae7d57857a81b"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=popular&view=list",
+      "path": "index__q_0c07512df1.html",
+      "bytes": 8580,
+      "sha256": "f9ca3b45d45fb6b4982ed4b92ef7ffb3e993d5a89007dda8aff0f8e05ca9af47"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=cards",
+      "path": "index__q_41eb8196af.html",
+      "bytes": 9648,
+      "sha256": "ab541099bc6d13067c249029dcc048cd18442957f88c5119f78ac910d4de1e37"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=oldest&view=list",
+      "path": "index__q_68fd12f392.html",
+      "bytes": 8559,
+      "sha256": "77682e8aafa1350fc0ac5b18a09c3e4e6118e84bd7178e20d29edfb7245c3aae"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=popular&view=list",
+      "path": "index__q_b825124454.html",
+      "bytes": 8585,
+      "sha256": "b8be92aa8b6ae0bd3ec487e36f31ba9d6b692781153df00b728cb4e5e0e6eaa7"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=cards",
+      "path": "index__q_cd63fc57e0.html",
+      "bytes": 9724,
+      "sha256": "2984c5c97b727b6162ed94f0b42bb34fe64456883b966c982dd5c307c7d311c2"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&order=oldest&view=list",
+      "path": "index__q_c0e963abf7.html",
+      "bytes": 8400,
+      "sha256": "9d9b4ad29cd48d85cc22b362cbd3a340fdc43cc4ccc58f7ef4a990d938aaa9bd"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&order=popular&view=list",
+      "path": "index__q_b59a067bd3.html",
+      "bytes": 8426,
+      "sha256": "6426493e8fd91b49f096aaf8f813bab79917aa56496c5ec9082206e5a0ab2a4e"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&view=cards",
+      "path": "index__q_8773f19151.html",
+      "bytes": 9432,
+      "sha256": "41fac8a76813e6af3a834583c7b67f21bee30f1d59d4cf8b184044a03ce2ea80"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?order=popular&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?order=popular&view=cards",
+      "path": "index__q_ea9ea12299.html",
+      "bytes": 13448,
+      "sha256": "e30e211b9035064a2665f74ec5f08c7c57e05baa03a0cb62d8e002cfa9b708e9"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/reader.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/reader.js",
+      "path": "reader.js",
+      "bytes": 4212,
+      "sha256": "105f579cb0fe4b2c4d755a5cee7cc514d2857da4a66fd5776d25a72eca900bb9"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?order=oldest&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?order=oldest&view=cards",
+      "path": "index__q_bdb39e9150.html",
+      "bytes": 16922,
+      "sha256": "92adeb5c59f0c1c9d36d04c9b6756656fd512de52dd696e742bb59f91f55631d"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/cover.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/cover.js",
+      "path": "cover.js",
+      "bytes": 4035,
+      "sha256": "afed35ba18e7ff7e26df70a3f15ed94a78bb605efe2313e3e1775be0b92eb7b2"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/thumbnails.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/thumbnails.js",
+      "path": "thumbnails.js",
+      "bytes": 583,
+      "sha256": "893bf6368e4be04e46869ecdb6d0e0c25687e5ef76645dcf936dfa8a17c7a981"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "path": "index__q_7992199282.html",
+      "bytes": 8605,
+      "sha256": "af4f69b6dd3ca3e62876aac65752f1a5355dfd700a219416b0404986ae51f85e"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&order=oldest&view=list",
+      "path": "index__q_03aa887a03.html",
+      "bytes": 8707,
+      "sha256": "712c49ecb67f61f872e15876a4afedfe8a7ee70e9ff6e92ba8bf58c96ffb8911"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&order=popular&view=list",
+      "path": "index__q_6b71b265f2.html",
+      "bytes": 8732,
+      "sha256": "f4389892469e4855f76c297f830363b1f4939315280d2ed0ad0efb5b53dbe94a"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=cards",
+      "path": "index__q_cbb9d58e06.html",
+      "bytes": 9801,
+      "sha256": "4169f478aeebfbc1e6ef168c8dc7b6c12c8a1ac7b2331e26b7d6c311bbfa8c9a"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "path": "index__q_5d25dfe402.html",
+      "bytes": 8901,
+      "sha256": "cb116b79d2e560ab439155b77c6a39a1b7670d2c17fa17499819290dad72b5e8"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "path": "index__q_dd8adc5a60.html",
+      "bytes": 8148,
+      "sha256": "4e3e9388ffb0cb69710796198849986529a3a080d9c923e89eefca36a734ac8b"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%ED%9A%8C%EC%82%AC%EC%8D%B0&view=list",
+      "path": "index__q_d2452725f0.html",
+      "bytes": 8040,
+      "sha256": "b3744829312d36db957f1e00c6ad381c58296cddbf36f33bef5ccdbbdafecfc4"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "path": "index__q_dcc2fff025.html",
+      "bytes": 8610,
+      "sha256": "ab2c2b44850fc3859f6a5765d3209566135ab854d13177c667e7d26a5cc0e5da"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&order=oldest&view=list",
+      "path": "index__q_e1b704721e.html",
+      "bytes": 8712,
+      "sha256": "007e4b337e930df0de9e0e565e7e01e6edd60ecb39afee024aa77cdb72c12696"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&order=popular&view=list",
+      "path": "index__q_a8514f67fe.html",
+      "bytes": 8737,
+      "sha256": "0f84866e64dcb09781e5eebd33926b180d9acd6643f99ab0641e31b79b1d0a6f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=cards",
+      "path": "index__q_2b5e2198d7.html",
+      "bytes": 9877,
+      "sha256": "f9ac44a2d2eb21c461cfc629783666e4f50bc398c1a66941a02fcf15ef1f6aff"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "path": "index__q_167df74c25.html",
+      "bytes": 8148,
+      "sha256": "45e71679ebb25a9dcfc7c171ad9d8556b31a9b7d22b1e54c54f706888bf7786d"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "path": "index__q_daed4b8153.html",
+      "bytes": 8906,
+      "sha256": "8b6fefad0fb196961ceab2295522301091f0faae8f57f00b10a091387e3b6c7a"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%B9%9C%EA%B5%AC%EC%8D%B0&view=list",
+      "path": "index__q_6cccc23669.html",
+      "bytes": 8040,
+      "sha256": "5c0fd42748eb33651f70dc36927082f36b2ba09cb03b6ad8bb92d389995fce18"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "path": "index__q_0c105c3e27.html",
+      "bytes": 8553,
+      "sha256": "e0815c97acff0a1cd82a55c8c54d0b88ed0bc07954bc883cf816e110c1fecc05"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&order=oldest&view=list",
+      "path": "index__q_478ca5b9c0.html",
+      "bytes": 8655,
+      "sha256": "a7af7b202cee3a25d0db54bcb629a83d48555024821b300e79f2f64ed882e87f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&order=popular&view=list",
+      "path": "index__q_bf77969e73.html",
+      "bytes": 8680,
+      "sha256": "75c63272b93def0106b6ec73678d5b8f7412822f700646d9b8d3b6fcec467695"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=cards",
+      "path": "index__q_616945dd37.html",
+      "bytes": 9687,
+      "sha256": "8c54597b1b426960b07ec222a1725ce22d57cb06f8d0ada4e7a435d6b23204c9"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "path": "index__q_5ac8f1b12f.html",
+      "bytes": 8148,
+      "sha256": "9d5f9c76d14b87caf66a4229f971eaa79f62d2a1b0c1f7651461434608dc9e35"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "path": "index__q_67fc2262a1.html",
+      "bytes": 8148,
+      "sha256": "365632b479d390b556cde7f3242628995ea5034d62e7cf134a5d938b1ca9f124"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%9D%BC%EC%83%81%EC%8D%B0&view=list",
+      "path": "index__q_96d6f7083b.html",
+      "bytes": 8741,
+      "sha256": "92eb3404452faaed30164262744da4cd40ecc32944fcb35d833507c67e6ad141"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "path": "index__q_0bf05171b4.html",
+      "bytes": 8259,
+      "sha256": "dc18a20f1cd7db24e1bf5a0623cd9c0faad10e9eaf5df9a7d0623a7f5867948f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=oldest&view=list",
+      "path": "index__q_55b5c90a37.html",
+      "bytes": 8361,
+      "sha256": "31e719a33974c7396b8a69b20cea3a409338a4942764432b1b5b72eb73c73cb7"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&order=popular&view=list",
+      "path": "index__q_3ae01be59f.html",
+      "bytes": 8386,
+      "sha256": "4f089bb5d0d0418a0fdb27187b33a26fe0e0cef2aa325dc0cbfa03865bf522f9"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=cards",
+      "path": "index__q_e9ec10371f.html",
+      "bytes": 8894,
+      "sha256": "1341100e3a9f9eccfe274fbcd418bd23c02af9a76000875d202ae0495c42f4d3"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "path": "index__q_0747492b30.html",
+      "bytes": 8555,
+      "sha256": "851bb6a3a5295778873c52350dec0bd25c2ff6aaa00a4adea85246413cdc7f80"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "path": "index__q_2a14af0bcb.html",
+      "bytes": 8238,
+      "sha256": "c28c6a86eb80cee6dccfc5be06ed4589a816c6ee7f5964d815675dd850e1e838"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&view=list",
+      "path": "index__q_7c75ba5916.html",
+      "bytes": 8130,
+      "sha256": "02677ec809b2acd952afd7f330eeb0a536497a3724e9e7e3b0c7b754a0afd427"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "path": "index__q_283d5a32a8.html",
+      "bytes": 8259,
+      "sha256": "a8c807fad0fab752ec89c54be513a061862323ef052ac99c4f7597f0daf3b681"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&order=oldest&view=list",
+      "path": "index__q_d50840e5f4.html",
+      "bytes": 8361,
+      "sha256": "7fbd91269a1a29de10dc9156eb0b0ab179433c684ae6a176f2ee037e3d2709ef"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&order=popular&view=list",
+      "path": "index__q_97a84b8ab4.html",
+      "bytes": 8386,
+      "sha256": "054e0e180623136966e0fda02a9f7f4343261cda09df8ca455723dc5565c851f"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=cards",
+      "path": "index__q_d1c76a64d1.html",
+      "bytes": 8894,
+      "sha256": "d87c98f98d592bfec6cfbaa9bb6d1c44fa3a6973b774bcc3f4eab933773f8ed0"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "path": "index__q_9c632fca51.html",
+      "bytes": 8555,
+      "sha256": "a27849946b9455c374d9a9fa4eaf1efff790b29eb491453c1fa91766b5c5fd85"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "path": "index__q_e6e38e554e.html",
+      "bytes": 8238,
+      "sha256": "00c0aaf0c7395b1c7bfbea58079b7646227aac4d5afce7edceaa13b385fc858b"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EC%9D%B8%EC%88%98%EC%9D%B8%EA%B3%84&view=list",
+      "path": "index__q_12337a5b70.html",
+      "bytes": 8130,
+      "sha256": "896d26e82cf9fcdb2d277372cb05426288be9868b648b6d7196d8b79c6377d2d"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "path": "index__q_6a7f99f0a2.html",
+      "bytes": 8187,
+      "sha256": "5d66fd70b91853c5958096e84d134784405eb1dd005d94769e31fc6a87e61955"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&order=oldest&view=list",
+      "path": "index__q_5a7438004c.html",
+      "bytes": 8289,
+      "sha256": "d143253990d77c2bff90f7c1b8190862a6e6251b04283c2cdf6904c28ab4162a"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&order=popular&view=list",
+      "path": "index__q_165341d1cc.html",
+      "bytes": 8314,
+      "sha256": "13e8801b4ee1f2423f0762531c4e83e0bae6f7de43eb4703542eb464e2cef7e8"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=cards",
+      "path": "index__q_74dc45fba8.html",
+      "bytes": 8876,
+      "sha256": "63dd9834a2ee98dcfbff6dc1d1b6e9f76f304f0ab4df415f12444d002e47542a"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%A7%81%EC%9E%A5%EC%83%9D%ED%99%9C&tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "path": "index__q_5def275d27.html",
+      "bytes": 8148,
+      "sha256": "c6ac50d2aba905072e6ba5b7377a1a3197d379444e01a69ef3b5f871b2649ee2"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "path": "index__q_1e31ed32ee.html",
+      "bytes": 8483,
+      "sha256": "232898676c0fcaddf3a08fe4b192bc76aa0794d970cbf924bf307a4f0305291a"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?category=%EC%9D%BC%EC%83%81&tag=%EA%B2%B0%ED%98%BC%EC%8B%9D&view=list",
+      "path": "index__q_fd33915fcc.html",
+      "bytes": 8040,
+      "sha256": "72c03830c95cd1097996bcdc4eadc1a66afd9bd08e435e3b98bbcb52136eba6d"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=list",
+      "path": "index__q_91acaa0a45.html",
+      "bytes": 8277,
+      "sha256": "fd98a07d78229980655e83adddb5480c0e2b3304d10035c9d6c53fdc40d26d16"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=oldest&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=oldest&view=list",
+      "path": "index__q_a3f96d7a07.html",
+      "bytes": 8379,
+      "sha256": "c6c29f53cbd62938f0d232719a524901534fc751f2461bc9b5803305478d0c6b"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=popular&view=list",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&order=popular&view=list",
+      "path": "index__q_5f892a2bc4.html",
+      "bytes": 8404,
+      "sha256": "5be91d4023e92a1ef6699869f42fb5040314671305585dc55efbd6ba3f2679a5"
+    },
+    {
+      "url": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=cards",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "finalUrl": "https://sseolzip.tnwjd2854.chatgpt.site/?tag=%EC%9D%B8%EA%B0%84%EA%B4%80%EA%B3%84&view=cards",
+      "path": "index__q_f63147fa38.html",
+      "bytes": 8966,
+      "sha256": "d875d491bdbf0853e6d55230fb1aef1f80e7097bb864b24bc576a5aaad090291"
+    }
+  ],
+  "truncated": true
+}
