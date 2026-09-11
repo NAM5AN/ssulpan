@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="썰판 이야기" />
+  <title>썰판 — 이야기</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="reader-page">
+  <main class="reader-shell">
+    <a class="reader-brand" href="/">썰판</a>
+    <article id="readerArticle">
+      <div class="reader-meta"><span id="postCategory"></span><span id="postDate"></span><span id="postViews"></span></div>
+      <h1 id="postTitle"></h1>
+      <p id="postTeaser" class="reader-teaser"></p>
+      <div id="beforeContent" class="reader-content"></div>
+      <div id="fadeGate" class="fade-gate">
+        <div class="fade-mask"></div>
+        <h2 id="gateLine"></h2>
+        <button id="continueBtn" class="continue-btn">계속 읽기</button>
+        <p class="ad-note">현재는 광고 없이 이어 읽을 수 있어요.</p>
+      </div>
+      <div id="afterContent" class="reader-content after-content" hidden></div>
+      <div id="postTags" class="tag-cloud reader-tags"></div>
+    </article>
+
+    <section class="next-story">
+      <span>다음 글</span>
+      <a id="nextPost" href="#"><strong id="nextTitle"></strong><b aria-hidden="true">›</b></a>
+    </section>
+
+    <nav class="reader-tools" aria-label="원고 도구">
+      <a id="instagramLink" href="#">이 글의 인스타 원고</a>
+      <span>·</span>
+      <a id="studioLink" href="#">본문 끊기 설정</a>
+    </nav>
+  </main>
+  <footer class="reader-footer">
+    <a href="/" class="brand small">썰판</a>
+    <span>이야기를 모으는 곳</span>
+  </footer>
+  <script src="/data.js"></script>
+  <script src="/post.js" defer></script>
+</body>
+</html>
