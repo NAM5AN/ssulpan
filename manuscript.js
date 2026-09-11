@@ -1,17 +1,3 @@
-const $=s=>document.querySelector(s);
-const id=new URLSearchParams(location.search).get('id')||SSULPAN_DATA.getPublished()[0]?.id;
-function safeParse(v,f){try{return JSON.parse(v)||f}catch{return f}}
-const draft=safeParse(localStorage.getItem('ssulpan.studio.drafts.v2'),[]).find(d=>String(d.id)===String(id));
-const raw=draft||SSULPAN_DATA.getPost(id);
-const post=raw?SSULPAN_DATA.normalize(raw):null;
-if(!post){$('#manuscriptPages').innerHTML='<p>원고를 찾을 수 없어요.</p>'}
-else{
-  $('#backStudio').href=`/studio.html?id=${encodeURIComponent(post.id)}`;
-  document.title=`장별 원고 · ${post.title}`;
-  const paras=SSULPAN_DATA.paragraphs([post.beforeContent,post.afterContent].filter(Boolean).join('\n\n'));
-  const chunks=[[],[],[],[]],sizes=[0,0,0,0];let page=0;
-  const target=Math.max(1,paras.join('').length/4);
-  paras.forEach(p=>{if(page<3&&sizes[page]>=target)page++;chunks[page].push(p);sizes[page]+=p.length});
-  const pages=[`<div class="manuscript-title">${post.hook?post.hook.replace(/\n/g,'<br>'):post.title}</div>`,...chunks.map(c=>c.map(p=>`<p>${p}</p>`).join(''))];
-  $('#manuscriptPages').innerHTML=pages.map((body,i)=>`<section class="manuscript-page"><div class="page-no">${String(i+1).padStart(2,'0')} / 05</div><div class="page-body">${body}</div></section>`).join('');
-}
+const $=s=>document.querySelector(s),cfg=window.SSUL_CONFIG,id=new URLSearchParams(location.search).get('id');let post=null;function cached(){try{return JSON.parse(sessionStorage.getItem('ssul_tool_draft')||'null')}catch{return null}}function seeds(){return window.SSULPAN_DATA?.SEEDS||[]}function splitFive(text){const ps=String(text||'').split(/\n\s*\n/).filter(Boolean);if(!ps.length)return ['','','','',''];const pages=[[],[],[],[],[]];let total=ps.reduce((n,p)=>n+p.length,0),target=Math.max(1,total/5),i=0,count=0;for(const p of ps){if(i<4&&count>=target){i++;count=0}pages[i].push(p);count+=p.length}return pages.map(x=>x.join('\n\n'))}
+async function load(){const c=cached();if(c&&String(c.id)===String(id))post=c;if(!post)try{const r=await fetch(`${cfg.publicApi}?id=${encodeURIComponent(id||'')}`,{headers:{apikey:cfg.publishableKey},cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)post=d.post}catch{}if(!post)post=seeds().find(p=>String(p.id)===String(id));if(!post){$('#pages').innerHTML='<p>원고를 찾지 못했습니다.</p>';return}$('#back').href=`./studio.html?id=${encodeURIComponent(post.id)}`;const full=[post.beforeContent,post.afterContent].filter(Boolean).join('\n\n');const parts=splitFive(full);$('#pages').innerHTML=parts.map((p,i)=>`<section class="page"><div class="page-no">${String(i+1).padStart(2,'0')} / 05</div>${i===0?`<h2>${escapeHtml(post.title)}</h2>`:''}<p>${escapeHtml(p)}</p></section>`).join('')}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}load();

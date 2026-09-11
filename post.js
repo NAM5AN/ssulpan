@@ -1,37 +1,5 @@
-const $=s=>document.querySelector(s);
-const id=new URLSearchParams(location.search).get('id')||SSULPAN_DATA.getPublished()[0]?.id;
-const post=SSULPAN_DATA.getPost(id);
-function paragraphs(text){return SSULPAN_DATA.paragraphs(text).map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('')}
-if(!post){
-  document.title='이야기를 찾을 수 없습니다 — 썰판';
-  $('#readerArticle').innerHTML='<div class="not-found"><h1>이야기를 찾을 수 없어요.</h1><a href="/">전체 글로 돌아가기</a></div>';
-}else{
-  SSULPAN_DATA.addView(post.id);
-  document.title=`${post.title} — 썰판`;
-  $('#postCategory').textContent=post.category;
-  $('#postDate').textContent=post.date;
-  $('#postViews').textContent=`조회 ${SSULPAN_DATA.viewCount(post).toLocaleString()}`;
-  $('#postTitle').textContent=post.title;
-  $('#postTeaser').textContent=post.teaser;
-  $('#beforeContent').innerHTML=paragraphs(post.beforeContent);
-  $('#afterContent').innerHTML=paragraphs(post.afterContent);
-  $('#gateLine').textContent=post.gateLine||'계속 읽기';
-  $('#fadeGate').style.setProperty('--fade-length',`${post.gradient||180}px`);
-  $('#postTags').innerHTML=(post.hashtags||[]).map(t=>`<span>${t}</span>`).join('');
-  const next=SSULPAN_DATA.nextPost(post.id);
-  if(next){
-    $('#nextTitle').textContent=next.title;
-    $('#nextPost').href=`/post.html?id=${encodeURIComponent(next.id)}`;
-  }else{
-    $('.next-story').hidden=true;
-  }
-  $('#instagramLink').href=`/instagram.html?id=${encodeURIComponent(post.id)}`;
-  $('#studioLink').href=`/studio.html?id=${encodeURIComponent(post.id)}`;
-  $('#continueBtn').onclick=()=>{
-    $('#afterContent').hidden=false;
-    $('#continueBtn').hidden=true;
-    $('.ad-note').textContent='이어 읽기가 열렸어요.';
-    $('#fadeGate').classList.add('opened');
-    requestAnimationFrame(()=>$('#afterContent').scrollIntoView({behavior:'smooth',block:'start'}));
-  };
-}
+const $=s=>document.querySelector(s);const cfg=window.SSUL_CONFIG;const id=new URLSearchParams(location.search).get('id');const H={apikey:cfg.publishableKey};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const paras=s=>String(s||'').split(/\n\s*\n/).filter(Boolean).map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('');function seeds(){return window.SSULPAN_DATA?.SEEDS||[]}
+async function getAll(){try{const r=await fetch(cfg.publicApi,{headers:H,cache:'no-store'});const d=await r.json();if(r.ok&&d.ok)return d.posts}catch{}return seeds()}
+async function getPost(){try{const r=await fetch(`${cfg.publicApi}?id=${encodeURIComponent(id||'')}`,{headers:H,cache:'no-store'});const d=await r.json();if(r.ok&&d.ok)return d.post}catch{}return seeds().find(p=>String(p.id)===String(id))||null}
+async function addView(post){try{const r=await fetch(cfg.publicApi,{method:'POST',headers:{...H,'content-type':'application/json'},body:JSON.stringify({action:'view',id:post.id})});const d=await r.json();if(r.ok&&d.ok){post.views=d.views;$('#views').textContent=`조회 ${Number(d.views).toLocaleString()}`}}catch{}}
+async function init(){const [post,all]=await Promise.all([getPost(),getAll()]);if(!post){$('#notFound').classList.remove('hidden');return}document.title=`${post.title} — 썰판`;$('#article').classList.remove('hidden');$('#category').textContent=post.category;$('#date').textContent=post.date||'';$('#views').textContent=`조회 ${Number(post.views||0).toLocaleString()}`;$('#title').textContent=post.title;$('#teaser').textContent=post.teaser||'';$('#before').innerHTML=paras(post.beforeContent);$('#after').innerHTML=paras(post.afterContent);$('#gateLine').textContent=post.gateLine||'계속 읽어보세요.';$('#tagCloud').innerHTML=(post.tags||[]).map(t=>`<span>#${esc(String(t).replace(/^#/,''))}</span>`).join('');const i=all.findIndex(p=>String(p.id)===String(post.id)),next=all.length?all[(i+1+all.length)%all.length]:null;if(next){$('#nextTitle').textContent=next.title;$('#nextLink').href=`./post.html?id=${encodeURIComponent(next.id)}`}else $('#next').classList.add('hidden');$('#continue').onclick=()=>{$('#after').classList.remove('hidden');$('#gate').classList.add('hidden');$('#after').scrollIntoView({behavior:'smooth',block:'start'})};addView(post)}init();

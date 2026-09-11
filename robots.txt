@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /studio.html
+Disallow: /instagram.html
+Disallow: /manuscript.html

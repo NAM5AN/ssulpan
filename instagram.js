@@ -1,53 +1,7 @@
-const $=s=>document.querySelector(s);
-const id=new URLSearchParams(location.search).get('id')||SSULPAN_DATA.getPublished()[0]?.id;
-function safeParse(v,f){try{return JSON.parse(v)||f}catch{return f}}
-function findDraft(id){
-  const drafts=safeParse(localStorage.getItem('ssulpan.studio.drafts.v2'),[]);
-  return drafts.find(d=>String(d.id)===String(id))||null;
-}
-function normalizeAny(raw){
-  if(!raw)return null;
-  const n=SSULPAN_DATA.normalize(raw);
-  return {...n,hook:raw.hook||n.hook,coverDetail:raw.coverDetail||n.coverDetail,caption:raw.caption||n.caption,hashtags:Array.isArray(raw.hashtags)?raw.hashtags:String(raw.hashtags||'').split(/\s+/).filter(Boolean)};
-}
-const post=normalizeAny(findDraft(id)||SSULPAN_DATA.getPost(id));
-if(!post){document.querySelector('.tool-shell').innerHTML='<h1>원고를 찾을 수 없어요.</h1><a href="/">홈으로</a>'}
-else{
-  $('#backStudio').href=`/studio.html?id=${encodeURIComponent(post.id)}`;
-  $('#coverCategory').textContent=post.category;
-  $('#coverHook').innerHTML=String(post.hook||post.title).split('\n').map(x=>`<span>${x}</span>`).join('');
-  $('#coverDetail').textContent=post.coverDetail||'';
-  $('#captionText').textContent=post.caption||'';
-  $('#hashtagText').textContent=(post.hashtags||[]).join(' ');
-  $('#copyCaption').onclick=async()=>{
-    await navigator.clipboard.writeText([post.caption,(post.hashtags||[]).join(' ')].filter(Boolean).join('\n\n'));
-    const old=$('#copyCaption').textContent;$('#copyCaption').textContent='복사됨';setTimeout(()=>$('#copyCaption').textContent=old,900);
-  };
-  $('#downloadCover').onclick=()=>drawAndDownload(post);
-}
-function wrap(ctx,text,maxWidth){
-  const out=[];String(text||'').split('\n').forEach(part=>{
-    if(!part){out.push('');return}
-    let line='';
-    for(const ch of part){
-      const test=line+ch;
-      if(ctx.measureText(test).width>maxWidth&&line){out.push(line);line=ch}else line=test;
-    }
-    if(line)out.push(line);
-  });return out;
-}
-function drawAndDownload(p){
-  const c=$('#coverCanvas'),ctx=c.getContext('2d');
-  ctx.fillStyle='#ff5b27';ctx.fillRect(0,0,1080,1920);
-  ctx.fillStyle='#171717';ctx.font='900 58px sans-serif';ctx.fillText('썰판',90,240);
-  ctx.font='700 40px sans-serif';ctx.fillText(p.category,118,520);
-  ctx.strokeStyle='#1de6d4';ctx.lineWidth=20;ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.beginPath();ctx.moveTo(88,445);ctx.quadraticCurveTo(560,425,958,454);ctx.quadraticCurveTo(995,910,954,1440);ctx.quadraticCurveTo(530,1460,90,1438);ctx.quadraticCurveTo(54,910,88,445);ctx.stroke();
-  ctx.fillStyle='#171717';ctx.font='900 82px sans-serif';
-  const lines=wrap(ctx,p.hook||p.title,780).slice(0,4);let y=670;
-  lines.forEach(line=>{ctx.fillText(line,120,y);y+=118});
-  ctx.font='500 36px sans-serif';const detail=String(p.coverDetail||'').slice(0,60);let dy=1330;wrap(ctx,detail,780).slice(0,2).forEach(line=>{ctx.fillText(line,120,dy);dy+=48});
-  ctx.font='500 32px sans-serif';ctx.fillText('창작·각색 이야기',120,1575);
-  ctx.font='800 38px sans-serif';ctx.fillText('전체 글은 프로필 링크',120,1645);
-  const a=document.createElement('a');a.download=`ssulpan-instagram-${p.id}.png`;a.href=c.toDataURL('image/png');a.click();
-}
+const $=s=>document.querySelector(s),cfg=window.SSUL_CONFIG,id=new URLSearchParams(location.search).get('id');let post=null;function draftCache(){try{return JSON.parse(sessionStorage.getItem('ssul_tool_draft')||'null')}catch{return null}}function seeds(){return window.SSULPAN_DATA?.SEEDS||[]}
+async function load(){const cached=draftCache();if(cached&&String(cached.id)===String(id))post=cached;if(!post)try{const r=await fetch(`${cfg.publicApi}?id=${encodeURIComponent(id||'')}`,{headers:{apikey:cfg.publishableKey},cache:'no-store'}),d=await r.json();if(r.ok&&d.ok)post=d.post}catch{}if(!post)post=seeds().find(p=>String(p.id)===String(id));if(!post){document.body.innerHTML='<main class="tool"><a href="./">썰판</a><p>원고를 찾지 못했습니다.</p></main>';return}render()}
+function render(){$('#cat').textContent=post.category||'일상';const lines=String(post.hook||post.title||'').split('\n').filter(Boolean);$('#hook').innerHTML=lines.map(x=>`<span>${escapeHtml(x)}</span>`).join('');$('#detail').textContent=post.coverDetail||'';$('#caption').textContent=post.caption||'';$('#hashtags').innerHTML=(post.hashtags||[]).map(t=>`<span>${escapeHtml(t)}</span>`).join('');$('#back').href=`./studio.html?id=${encodeURIComponent(post.id)}`}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function wrap(ctx,text,max){const explicit=String(text||'').split('\n');const out=[];for(const part of explicit){const words=part.split(/\s+/);let line='';for(const w of words){const n=line?line+' '+w:w;if(ctx.measureText(n).width<=max)line=n;else{if(line)out.push(line);line=w}}if(line)out.push(line)}return out.slice(0,5)}
+$('#copyCaption').onclick=async()=>{await navigator.clipboard.writeText([post.caption,(post.hashtags||[]).join(' ')].filter(Boolean).join('\n\n'));$('#copyCaption').textContent='복사됨'};
+$('#download').onclick=()=>{const c=document.createElement('canvas');c.width=1080;c.height=1920;const x=c.getContext('2d');x.fillStyle='#ff5b27';x.fillRect(0,0,1080,1920);x.fillStyle='#171717';x.font='900 54px system-ui,sans-serif';x.fillText('썰집',92,220);x.font='700 36px system-ui,sans-serif';x.fillText(post.category||'일상',112,510);x.strokeStyle='#1de6d4';x.lineWidth=20;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(72,420);x.bezierCurveTo(220,405,780,420,940,430);x.bezierCurveTo(965,720,950,1090,936,1330);x.bezierCurveTo(680,1350,300,1336,76,1340);x.bezierCurveTo(58,1090,64,670,72,420);x.stroke();x.fillStyle='#171717';x.font='900 82px system-ui,sans-serif';let y=650;for(const line of wrap(x,post.hook||post.title,800)){x.fillText(line,112,y);y+=110}x.font='500 34px system-ui,sans-serif';for(const line of wrap(x,post.coverDetail||'',780)){x.fillText(line,112,1225);break}x.font='700 29px system-ui,sans-serif';x.fillText('창작·각색 이야기',112,1510);x.font='850 34px system-ui,sans-serif';x.fillText('전체 글은 프로필 링크',112,1570);c.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ssul-${post.id}-1080x1920.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},'image/png')};load();
