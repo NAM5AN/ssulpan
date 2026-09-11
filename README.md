@@ -1,23 +1,27 @@
 # 썰판 (ssulpan)
 
-**현재 저장소는 기존 사이트의 완전한 이전본이 아닙니다.**
+기존 ChatGPT Sites `sseolzip` 프로젝트를 GitHub로 복구하는 저장소입니다.
 
-## 원본 사본 — 2026-09-11 회수
+## 복구 상태
 
-[원본 이전 기록과 누락 목록](recovered/sseolzip/README.md)
+- `recovered/sseolzip/implementation-review/` — 회수한 실제 원본 코드·패치·테스트 사본
+- `recovered/sseolzip/prompt-v2/` — 회수한 실제 마스터 프롬프트·결과 스키마 사본
+- `recovered/sseolzip/restored-runtime/` — 누락됐던 렌더러·콘텐츠 호환 데이터·설정·표지 렌더러·DB 스키마·빌드 파이프라인을 살아남은 원본 계약과 당시 화면을 근거로 역복원한 실행 호환본
 
-사용자 Library에 보관된 실제 코드 검토 ZIP과 프롬프트 ZIP에서 22개 파일을 변경 없이 옮겼습니다. 실제 제작실 클라이언트, 서버 코드 2개, 마스터 프롬프트·스키마, 미적용 패치·모듈·테스트가 포함됩니다. 원본 내용은 SHA-256과 Git tree로 검증했습니다.
+원본 22개 파일은 별도로 무결성 검증되어 있으며, `restored-runtime`은 원본 바이트가 없던 파일을 **원본이라고 속이지 않고 별도 경로에서 역복원**한 버전입니다.
+
+자세한 복구 범위와 검증 결과는 [`recovered/sseolzip/README.md`](recovered/sseolzip/README.md)를 확인하세요.
+
+## 아직 실제 원본 값이 없는 것
+
+당시 서버의 D1 실제 행 데이터, R2/BUCKET 이미지 객체, 누적 조회수의 역사적 값은 원본 덤프가 발견되지 않아 복원값을 임의 생성하지 않았습니다. 코드/스키마/호환 런타임은 복구되어 있습니다.
+
+## 검증
 
 ```sh
 node recovered/sseolzip/verify-originals.mjs
-cd recovered/sseolzip/implementation-review
-npm test
+cd recovered/sseolzip/implementation-review && npm test
+cd ../restored-runtime && npm test
 ```
 
-원본의 화면 렌더러, 전체 HTML/CSS, 게시글 데이터, 이미지, DB 자료 등은 아직 확보하지 못했습니다. 회수된 원본을 실행 중인 사이트에 연결하거나 배포한 상태는 아닙니다.
-
-## 루트의 기존 재구성본
-
-루트 HTML/JS/CSS와 `api/generate.js`는 원본 소스를 가져온 것이 아니라 이전에 화면 정보로 다시 만든 간이 버전입니다. 샘플 본문·조회수·그라데이션 이미지, 브라우저별 로컬 저장, 실제 공개 목록에 연결되지 않은 게시 버튼이 포함되어 있습니다. 원본 제작실과 혼동하지 마세요.
-
-이번 원본 회수 커밋에서는 이 실행 파일들을 바꾸지 않았습니다. 루트 API에는 운영용 인증 등이 갖춰지지 않았으므로 API 키를 넣어 그대로 공개 운영하지 마세요. 기존 ChatGPT Sites도 변경하지 않았습니다.
+`restored-runtime`의 복구 테스트는 현재 5/5 통과합니다.
