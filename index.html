@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="썰판 - 직장생활, 인간관계, 일상 이야기 모음" />
+  <title>썰판 — 이야기 모음</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <a class="skip" href="#main">본문 바로가기</a>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="/" aria-label="썰판 홈">썰판</a>
+      <nav class="top-nav" aria-label="주요 메뉴">
+        <button data-category="전체" class="nav-btn is-active">홈</button>
+        <button data-category="직장생활" class="nav-btn">직장생활</button>
+        <button data-category="인간관계" class="nav-btn">인간관계</button>
+        <button data-category="일상" class="nav-btn">일상</button>
+        <button data-popular="true" class="nav-btn">인기글</button>
+      </nav>
+      <form id="searchForm" class="search" role="search">
+        <input id="searchInput" type="search" placeholder="이야기 검색" aria-label="이야기 검색" />
+        <button type="submit">검색</button>
+      </form>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <section class="hero" aria-label="추천 글">
+      <div id="heroTrack" class="hero-track"></div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <span id="heroCategory" class="eyebrow"></span>
+        <h1 id="heroTitle"></h1>
+        <p id="heroExcerpt"></p>
+      </div>
+      <div class="hero-controls">
+        <button id="prevHero" aria-label="이전 추천 글">이전</button>
+        <span id="heroCount">1 / 3</span>
+        <button id="nextHero" aria-label="다음 추천 글">다음</button>
+        <button id="toggleAuto" aria-pressed="false">일시정지</button>
+      </div>
+    </section>
+
+    <section class="content-layout">
+      <div class="feed">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">전체 글</p>
+            <h2 id="feedTitle">전체 글</h2>
+          </div>
+          <div class="controls">
+            <select id="sortSelect" aria-label="정렬">
+              <option value="new">최신순</option>
+              <option value="old">오래된순</option>
+              <option value="views">조회수순</option>
+            </select>
+            <button id="cardView" class="view-btn is-active">카드형 보기</button>
+            <button id="listView" class="view-btn">목록형 보기</button>
+          </div>
+        </div>
+        <div id="categoryChips" class="chips"></div>
+        <div id="postGrid" class="post-grid"></div>
+        <div id="emptyState" class="empty" hidden>조건에 맞는 이야기가 없습니다.</div>
+      </div>
+
+      <aside class="sidebar">
+        <section class="side-card">
+          <div class="side-title">게시판</div>
+          <div id="boardCounts"></div>
+        </section>
+        <section class="side-card">
+          <div class="side-title-row"><div class="side-title">인기글</div><button id="showPopular">전체 보기</button></div>
+          <div id="popularList" class="popular-list"></div>
+        </section>
+        <section class="side-card">
+          <div class="side-title">태그</div>
+          <div id="tagCloud" class="tag-cloud"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <dialog id="articleDialog" class="article-dialog">
+    <article>
+      <button id="closeArticle" class="close" aria-label="닫기">×</button>
+      <span id="articleCategory" class="eyebrow"></span>
+      <h2 id="articleTitle"></h2>
+      <p id="articleMeta" class="meta"></p>
+      <div id="articleBody" class="article-body"></div>
+      <div id="articleTags" class="tag-cloud"></div>
+    </article>
+  </dialog>
+
+  <footer>
+    <div class="wrap footer-row"><a class="brand small" href="/">썰판</a><span>이야기를 모으는 곳</span><a href="#main">맨 위로</a></div>
+  </footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
