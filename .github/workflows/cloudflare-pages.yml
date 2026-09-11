@@ -35,19 +35,49 @@ jobs:
             _headers _redirects robots.txt \
             dist/
 
+      - name: Discover Cloudflare account automatically
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_API_TOKEN repository secret is missing." >&2
+            exit 1
+          fi
+
+          RESPONSE="$(curl -fsS \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+
+          ACCOUNT_ID="$(python3 -c 'import json,sys; d=json.load(sys.stdin); r=d.get("result") or []; print(r[0].get("id", "") if len(r)==1 else "")' <<<"$RESPONSE")"
+          ACCOUNT_COUNT="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("result") or []))' <<<"$RESPONSE")"
+
+          if [ "$ACCOUNT_COUNT" != "1" ] || [ -z "$ACCOUNT_ID" ]; then
+            echo "The token must be scoped to exactly one Cloudflare account. Found: $ACCOUNT_COUNT" >&2
+            exit 1
+          fi
+
+          echo "CLOUDFLARE_ACCOUNT_ID=$ACCOUNT_ID" >> "$GITHUB_ENV"
+          echo "Cloudflare account detected automatically."
+
       - name: Create Pages project if needed
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create ssulpan --production-branch=main
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@latest pages project create ssulpan --production-branch=main >/tmp/ssul-create.log 2>&1 || true
+          cat /tmp/ssul-create.log
 
       - name: Deploy to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=ssulpan --branch=main
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@latest pages deploy dist \
+            --project-name=ssulpan \
+            --branch=main \
+            --commit-hash="$GITHUB_SHA"
