@@ -673,8 +673,23 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
         baseline,
       });
       result.preservation = preservation;
+      const overlap = preservation.expressionOverlap;
+      if (overlap) {
+        recordInspection(trace,"expression_overlap","원문 표현 연속 일치 검사",!overlap.review,{
+          message: overlap.review
+            ? `최장 ${overlap.longestRunTokens}어절 연속 일치 · 결과 ${Math.round(overlap.resultCoverage*1000)/10}%가 ${overlap.ngramSize}-gram 일치에 포함됨. 법적 판정이 아니며 원문과 결과를 직접 확인해 주세요.`
+            : `최장 ${overlap.longestRunTokens}어절 연속 일치 · 검사 기준상 긴 원문 표현 복사는 발견되지 않았습니다.`,
+          result: overlap,
+        });
+        if (overlap.review) recordWarning(trace,"SOURCE_EXPRESSION_OVERLAP","expression_overlap","원문과 여러 어절이 연속으로 같은 구간이 있습니다. 결과는 보존했으며 표현을 직접 확인해 주세요.",{
+          longestRunTokens:overlap.longestRunTokens,
+          resultCoverage:overlap.resultCoverage,
+          ngramSize:overlap.ngramSize,
+          strong:overlap.strong,
+        });
+      }
       const preservationPassed=!preservation.issues.length;
-      recordInspection(trace,"source_preservation","원문 보존 신호 검사",preservationPassed,{semanticVerdict:preservation.semanticVerdict,sourceStatus:preservation.sourceStatus,checks:preservation.checks,issues:preservation.issues,limitations:preservation.limitations});
+      recordInspection(trace,"source_preservation","원문 보존 신호 검사",preservationPassed,{semanticVerdict:preservation.semanticVerdict,sourceStatus:preservation.sourceStatus,checks:preservation.checks,issues:preservation.issues,expressionOverlap:overlap,limitations:preservation.limitations});
       if(!preservationPassed)recordWarning(trace,"SOURCE_PRESERVATION_REVIEW","source_preservation","원문 보존 검사에 사람이 확인할 항목이 있습니다.",{issueCount:preservation.issues.length});
       if (action === "review") result.summary = `${result.summary||""}\n\n원문 보존 자동 검사(의미 일치 판정 아님): ${JSON.stringify(preservation.issues)}`.trim();
     } catch(error) {

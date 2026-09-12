@@ -172,6 +172,33 @@ test('all studio buttons reach the real Edge dispatcher and job runner through t
 
 function validGenerated(){return {title:'잃어버린 인형',titles:['잃어버린 인형','다시 온 선물','뜻밖의 답장'],category:'일상',teaser:'인형을 잃어버린 뒤 답장이 왔다.',beforeContent:'여행 중 인형을 잃어버렸다.\n\n그런데 공식 계정에서 연락이 왔다.',afterContent:'며칠 뒤 새 인형과 손글씨 쪽지가 도착했다.',storyBible:'화자는 여행 중 인형을 잃어버렸다. 공식 계정이 새 인형을 보내줬다.',gateLine:'며칠 뒤 도착한 상자에는 뭐가 있었을까.',hook:'잃어버린 인형\n그런데 며칠 뒤\n답장이 왔다',coverDetail:'그런데 공식 계정에서 연락이 왔다.',caption:'여행 중 잃어버린 인형. 이런 답장을 받는다면?\n전체 글은 프로필 링크에서',hashtags:'#썰판 #썰 #인형 #여행 #선물',imageText:''};}
 
+test('exact Korean eojeol overlap is measured conservatively and never blocks a result',async()=>{
+ const sourceText='일본 여행 중에 아따맘마 인형을 잃어버린 한국인이 혹시나 하는 마음에 글을 올렸음';
+ const copied='앞부분은 다름. 일본 여행 중에 아따맘마 인형을 잃어버린 한국인이 혹시나 하는 마음에 글을 올렸음! 끝도 다름';
+ const copiedReport=preservation.ngramOverlap(sourceText,copied);
+ assert.equal(copiedReport.ngramSize,6);
+ assert.equal(copiedReport.longestRunTokens,12);
+ assert.equal(copiedReport.review,true);
+ assert.equal(copiedReport.strong,true);
+ assert.match(copiedReport.matches[0].sourceEvidence.text,/일본 여행 중에 아따맘마/);
+ const rewritten='한국인 여행자가 일본에서 아따맘마 인형을 잃어버렸고 혹시 찾을 수 있을까 싶어 온라인에 탔던 노선 정보를 남김';
+ const rewrittenReport=preservation.ngramOverlap(sourceText,rewritten);
+ assert.equal(rewrittenReport.review,false);
+ assert.ok(rewrittenReport.longestRunTokens<8);
+ const baseline=await preservation.createSourceBaseline({sourceText,complete:true});
+ const inspection=await preservation.inspectSourcePreservation({sourceText,resultText:copied,baseline});
+ assert.equal(inspection.blocksSave,false);
+ assert.equal(inspection.autoRetry,false);
+ assert.equal(inspection.checks.expressionOverlap,'exact_eojeol_review_signal');
+ assert.ok(inspection.issues.some(issue=>issue.kind==='expression'));
+});
+
+test('the installed master prompt keeps story facts while requiring newly written expression',()=>{
+ assert.match(studioCore.masterPrompt,/바꾸는 것은 문장 표현과 서술 순서뿐/);
+ assert.match(studioCore.masterPrompt,/인물·장소·소품·사건·반전은 원문 그대로 유지/);
+ assert.match(studioCore.masterPrompt,/여러 어절이 연속으로 똑같이 이어지는 구간/);
+});
+
 test('missing gateLine is precisely diagnosed and repaired once with both bodies frozen',async()=>{
  const raw=validGenerated();delete raw.gateLine;const original=structuredClone(raw);let calls=0;
  const report=generationSupport.fieldReport(studioCore.schemas.generate,raw);
@@ -198,6 +225,16 @@ test('tool serialization leaked into storyBible is repaired without changing eit
  const out=await generationSupport.completeMetadata(raw,async request=>{calls++;assert.deepEqual(request.schema.required,['storyBible']);return {storyBible:'화자가 인형을 잃어버렸고 공식 계정에서 새 인형을 보내줌.'};});
  assert.equal(calls,1);assert.equal(out.result.beforeContent,before);assert.equal(out.result.afterContent,after);
  assert.equal(generationSupport.hasToolSerializationArtifact(out.result.storyBible),false);
+});
+
+test('generation always clears compatibility-only imageText and recognizes Anthropic tool debris',async()=>{
+ const raw=validGenerated();raw.imageText='</antml：parameter>\n';let calls=0;
+ assert.equal(generationSupport.hasToolSerializationArtifact(raw.imageText),true);
+ const providerReport=generationSupport.fieldReport(studioCore.schemas.generate,raw);
+ assert.deepEqual(providerReport.invalid,[{field:'imageText',reason:'tool_serialization_artifact'}]);
+ const out=await generationSupport.completeMetadata(raw,async()=>{calls++;return {};});
+ assert.equal(calls,0);assert.equal(out.result.imageText,'');
+ assert.equal(studioCore.validateResult('generate',out.result,studioCore.cleanDraft({})).imageText,'');
 });
 
 test('validated generate result retains the thirteenth imageText field',()=>{
@@ -309,12 +346,12 @@ test('studio separates inspection results from the complete job history',()=>{
  assert.match(html,/id="inspection-results"/);assert.match(html,/전체 작업 내역/);assert.match(script,/검사 경고/);assert.match(script,/validationFallback/);
 });
 
-test('the applied master prompt makes colloquial and eumseongche defaults explicit without overriding action or quotations',()=>{
+test('the uploaded master prompt keeps colloquial eumseongche defaults and explicit tone handling',()=>{
  assert.ok(studioCore.masterPrompt.indexOf('# 가장 중요한 문체 원칙')<studioCore.masterPrompt.indexOf('# 작업 모드'));
- assert.match(studioCore.masterPrompt,/options\.tone="음슴체"/);
- assert.match(studioCore.masterPrompt,/반말 구어체에 `~함`, `~했음`, `~임`/);
- assert.match(studioCore.masterPrompt,/따옴표 안 대사[\s\S]*적용하지 않는다/);
- assert.match(studioCore.masterPrompt,/도구 스키마 > `action`[\s\S]*options`에 명시된 말투 > 가장 중요한 문체 원칙의 기본값/);
+ assert.match(studioCore.masterPrompt,/기본 종결어미는 `~함`, `~했음`, `~임`/);
+ assert.match(studioCore.masterPrompt,/`options\.tone`에 다른 말투가 지정되면 그 말투의 구어 종결/);
+ assert.match(studioCore.masterPrompt,/`options\.tone`이 명시적으로 격식체나 문어체를 요구한 경우에만 허용/);
+ assert.match(studioCore.masterPrompt,/도구 스키마 > 가장 중요한 문체 원칙 > `action`/);
  assert.equal(studioCore.normalizeWritingOptions({tone:'음슴체'}).tone,'음슴체');
  assert.equal(studioCore.normalizeWritingOptions({tone:'존댓말 구어체'}).tone,'존댓말 구어체');
  assert.equal(studioCore.normalizeWritingOptions({tone:'담담한 문어체'}).tone,'담담한 문어체');

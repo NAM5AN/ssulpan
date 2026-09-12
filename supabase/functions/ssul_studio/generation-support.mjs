@@ -1,6 +1,6 @@
 // Response contracts and diagnostics shared by the server and regression tests.
-export const GENERATION_RELEASE='2026-09-13-report-only-validation-1';
-const toolSerializationPattern = /<\/?(?:storyBible|gateLine|beforeContent|afterContent|title|titles|category|teaser|hook|coverDetail|caption|hashtags|imageText)\s*>|<parameter\s+name\s*=/iu;
+export const GENERATION_RELEASE='2026-09-13-expression-overlap-review-3';
+const toolSerializationPattern = /<\/?(?:storyBible|gateLine|beforeContent|afterContent|title|titles|category|teaser|hook|coverDetail|caption|hashtags|imageText)\s*>|<parameter\s+name\s*=|<\/?antml[\s:：._-]*parameter\b[^>]*>/iu;
 export function hasToolSerializationArtifact(value){return typeof value==='string'&&toolSerializationPattern.test(value);}
 export function strictSchema(schema){
   if(Array.isArray(schema))return schema.map(strictSchema);
@@ -39,8 +39,10 @@ const CAPACITY={title:160,category:30,teaser:240,storyBible:10000,gateLine:100};
 export async function completeMetadata(raw,call){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {result:raw,repaired:[]};
   const result={...raw};
-  // OCR is handled separately; absent imageText has one unambiguous value.
-  if(result.imageText===undefined)result.imageText='';
+  // OCR is handled before generation and merged into sourceText. The generate
+  // contract keeps imageText only for compatibility, so provider text or tool
+  // serialization debris must never leak into the saved candidate.
+  result.imageText='';
   const fields=METADATA.filter(key=>typeof result[key]!=='string'||!result[key].trim()||result[key].length>CAPACITY[key]||hasToolSerializationArtifact(result[key]));
   if(!fields.length)return {result,repaired:[]};
   if(!['beforeContent','afterContent'].every(key=>typeof result[key]==='string'&&result[key].trim()))return {result,repaired:[]};

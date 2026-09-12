@@ -3,6 +3,14 @@
 const kinds = ['event', 'dialogue', 'emotion', 'ending'];
 const evidence = (text, start, end) => ({start, end, text:text.slice(start, end)});
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+export const NGRAM_REVIEW_POLICY = Object.freeze({
+  ngramSize: 6,
+  reviewRunTokens: 8,
+  strongRunTokens: 12,
+  reviewCoverage: 0.12,
+  minimumCoverageTokens: 80,
+  maxEvidence: 8,
+});
 function check(condition, message) { if (!condition) throw new TypeError(message); }
 async function hash(text) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -35,6 +43,86 @@ export function quotedSpans(text) {
 function numberSpans(text) {
   return Array.from(text.matchAll(/\d+(?:,\d{3})*(?:\.\d+)?(?:\s*(?:만원|억원|년|월|일|시|분|초|원|명|개|층|살|번|회|%))?/gu), m => ({...evidence(text, m.index, m.index + m[0].length), key:m[0].replace(/[\s,]/gu, '')}));
 }
+
+function eojeolSpans(text) {
+  return Array.from(text.matchAll(/[\p{L}\p{N}]+/gu), match => ({
+    value:match[0].normalize('NFC').toLocaleLowerCase('ko-KR'),
+    start:match.index,
+    end:match.index + match[0].length,
+  }));
+}
+
+function tokenEvidence(text, tokens, start, length) {
+  return evidence(text, tokens[start].start, tokens[start + length - 1].end);
+}
+
+// Exact eojeol overlap is a review signal only. It is not a copyright verdict.
+// Six-token windows discover candidates; longer runs and broad coverage decide whether
+// the report needs human review. Punctuation and letter case do not hide a match.
+export function ngramOverlap(sourceText, resultText, options={}) {
+  check(typeof sourceText === 'string' && typeof resultText === 'string', '원문과 결과 문자열이 필요합니다.');
+  const policy = {...NGRAM_REVIEW_POLICY, ...options};
+  check(Number.isInteger(policy.ngramSize) && policy.ngramSize >= 2, 'ngramSize는 2 이상의 정수여야 합니다.');
+  check(Number.isInteger(policy.reviewRunTokens) && policy.reviewRunTokens >= policy.ngramSize, 'reviewRunTokens는 ngramSize 이상이어야 합니다.');
+  check(Number.isInteger(policy.strongRunTokens) && policy.strongRunTokens >= policy.reviewRunTokens, 'strongRunTokens는 reviewRunTokens 이상이어야 합니다.');
+  check(Number.isFinite(policy.reviewCoverage) && policy.reviewCoverage >= 0 && policy.reviewCoverage <= 1, 'reviewCoverage는 0부터 1 사이여야 합니다.');
+  const source = eojeolSpans(sourceText), result = eojeolSpans(resultText), n = policy.ngramSize;
+  const empty = {
+    unit:'eojeol', ngramSize:n, sourceTokenCount:source.length, resultTokenCount:result.length,
+    matchingWindowCount:0, resultCoverage:0, sourceCoverage:0, longestRunTokens:0,
+    review:false, strong:false, reasons:[], matches:[],
+  };
+  if (source.length < n || result.length < n) return empty;
+
+  const keyAt = (tokens, at) => tokens.slice(at, at + n).map(token => token.value).join('\u0001');
+  const sourceIndex = new Map();
+  for (let at = 0; at <= source.length - n; at += 1) {
+    const key = keyAt(source, at), positions = sourceIndex.get(key) || [];
+    // Pathological repeated text must not turn this diagnostic into quadratic work.
+    if (positions.length < 64) positions.push(at);
+    sourceIndex.set(key, positions);
+  }
+
+  const sourceCovered = new Uint8Array(source.length), resultCovered = new Uint8Array(result.length);
+  const runs = [], seenRuns = new Set();
+  let matchingWindowCount = 0;
+  for (let resultAt = 0; resultAt <= result.length - n; resultAt += 1) {
+    const sourcePositions = sourceIndex.get(keyAt(result, resultAt));
+    if (!sourcePositions) continue;
+    matchingWindowCount += 1;
+    for (let offset = 0; offset < n; offset += 1) resultCovered[resultAt + offset] = 1;
+    for (const sourceAt of sourcePositions) {
+      for (let offset = 0; offset < n; offset += 1) sourceCovered[sourceAt + offset] = 1;
+      if (sourceAt > 0 && resultAt > 0 && source[sourceAt - 1].value === result[resultAt - 1].value) continue;
+      let length = n;
+      while (sourceAt + length < source.length && resultAt + length < result.length && source[sourceAt + length].value === result[resultAt + length].value) length += 1;
+      const runKey = `${sourceAt}:${resultAt}:${length}`;
+      if (!seenRuns.has(runKey)) {
+        seenRuns.add(runKey);
+        runs.push({
+          tokenCount:length,
+          sourceEvidence:tokenEvidence(sourceText, source, sourceAt, length),
+          resultEvidence:tokenEvidence(resultText, result, resultAt, length),
+        });
+      }
+    }
+  }
+  runs.sort((a, b) => b.tokenCount - a.tokenCount || a.sourceEvidence.start - b.sourceEvidence.start || a.resultEvidence.start - b.resultEvidence.start);
+  const resultCoverage = resultCovered.reduce((sum, value) => sum + value, 0) / result.length;
+  const sourceCoverage = sourceCovered.reduce((sum, value) => sum + value, 0) / source.length;
+  const longestRunTokens = runs[0]?.tokenCount || 0;
+  const coverageReview = result.length >= policy.minimumCoverageTokens && resultCoverage >= policy.reviewCoverage;
+  const reasons = [];
+  if (longestRunTokens >= policy.reviewRunTokens) reasons.push('long_exact_run');
+  if (coverageReview) reasons.push('broad_ngram_coverage');
+  const strong = longestRunTokens >= policy.strongRunTokens || (coverageReview && resultCoverage >= policy.reviewCoverage * 2);
+  return {
+    unit:'eojeol', ngramSize:n, sourceTokenCount:source.length, resultTokenCount:result.length,
+    matchingWindowCount, resultCoverage:Number(resultCoverage.toFixed(4)), sourceCoverage:Number(sourceCoverage.toFixed(4)),
+    longestRunTokens, review:reasons.length > 0, strong, reasons,
+    matches:runs.slice(0, policy.maxEvidence),
+  };
+}
 export async function createSourceBaseline({sourceText, complete, anchors=[], people=[]}) {
   check(typeof sourceText === 'string', '전체 원문 문자열이 필요합니다.');
   check(typeof complete === 'boolean', '원문 수집 완료 여부를 명시해야 합니다.');
@@ -66,14 +154,26 @@ export async function inspectSourcePreservation({sourceText, resultText, baselin
   const report = {
     semanticVerdict:'undetermined', blocksSave:false, autoRetry:false,
     sourceStatus:baseline.complete ? 'complete' : 'incomplete',
-    checks:{events:'not_checked', people:'not_checked', dialogue:'not_checked', emotion:'not_checked', ending:'not_checked', unknownNames:'not_checked'},
-    quoteStatistics:null, issues:[],
-    limitations:['문자열 일치가 의미·인과·감정·반전의 보존을 증명하지 않습니다.', '일치하지 않는 표현은 정상적인 재구성일 수 있습니다.', '이름 탐지에는 외부 NER 또는 사람이 확인한 후보가 필요합니다.'],
+    checks:{events:'not_checked', people:'not_checked', dialogue:'not_checked', emotion:'not_checked', ending:'not_checked', unknownNames:'not_checked', expressionOverlap:'not_checked'},
+    quoteStatistics:null, expressionOverlap:null, issues:[],
+    limitations:['문자열 일치가 의미·인과·감정·반전의 보존을 증명하지 않습니다.', 'n-gram 수치는 저작권 침해 여부나 비침해를 판정하지 않습니다.', '일치하지 않는 표현은 정상적인 재구성일 수 있습니다.', '이름 탐지에는 외부 NER 또는 사람이 확인한 후보가 필요합니다.'],
   };
   const issue = (code, kind, sourceEvidence, resultEvidence, note) => report.issues.push({code, kind, severity:'review', sourceEvidence, resultEvidence, note});
   if (!baseline.complete) {
     issue('SOURCE_INCOMPLETE', 'source', [], [], '원문 수집이 완료되지 않아 보존 비교를 실행하지 않았습니다.');
     return report;
+  }
+  report.expressionOverlap = ngramOverlap(sourceText, resultText);
+  report.checks.expressionOverlap = 'exact_eojeol_review_signal';
+  if (report.expressionOverlap.review) {
+    const match = report.expressionOverlap.matches[0];
+    issue(
+      report.expressionOverlap.strong ? 'STRONG_EXACT_EOJEOL_OVERLAP' : 'EXACT_EOJEOL_OVERLAP',
+      'expression',
+      match ? [match.sourceEvidence] : [],
+      match ? [match.resultEvidence] : [],
+      `원문과 결과에 최장 ${report.expressionOverlap.longestRunTokens}어절 연속 일치가 있고 결과 토큰의 ${(report.expressionOverlap.resultCoverage * 100).toFixed(1)}%가 ${report.expressionOverlap.ngramSize}-gram 일치에 포함됩니다. 법적 판정이 아니라 사람이 표현을 대조할 신호입니다.`,
+    );
   }
   for (const person of baseline.people) {
     report.checks.people = 'literal_signals_only';
