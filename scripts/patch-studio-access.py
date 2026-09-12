@@ -11,15 +11,21 @@ if needle not in s:
 s=s.replace(needle,insert,1)
 
 old="""const access=path.match(/^\\/studio\\/access\\/([A-Za-z0-9_-]{20,100})\\/?$/);if(access){if(!await validStudioToken(access[1]))return html('<!doctype html><meta charset=\"utf-8\"><title>404</title>',404);return new Response(null,{status:302,headers:{Location:'/studio/','Set-Cookie':`ssul_studio=${encodeURIComponent(access[1])}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Strict`,'Cache-Control':'no-store'}})}"""
-new="""const access=path.match(/^\\/studio\\/access\\/([A-Za-z0-9_-]{20,100})\\/?$/);if(access){if(!await validStudioToken(access[1]))return html('<!doctype html><meta charset=\"utf-8\"><title>404</title>',404);const assetReq=new Request(new URL('/studio.html',url),request);const res=await env.ASSETS.fetch(assetReq);let text=await res.text();text=text.replace('<script src=\"/studio.js\"></script>',studioBootstrap(access[1])+'<script src=\"/studio.js\"></script>');return new Response(text,{status:res.status,headers:{...Object.fromEntries(res.headers),'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow','Set-Cookie':`ssul_studio=${encodeURIComponent(access[1])}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`}})}"""
+new="""const access=path.match(/^\\/studio\\/access\\/([A-Za-z0-9_-]{20,100})\\/?$/);if(access){if(!await validStudioToken(access[1]))return html('<!doctype html><meta charset=\"utf-8\"><title>404</title>',404);const assetReq=new Request(new URL('/studio-shell.txt',url),request);const res=await env.ASSETS.fetch(assetReq);let text=await res.text();text=text.replace('<script src=\"/studio.js\"></script>',studioBootstrap(access[1])+'<script src=\"/studio.js\"></script>');return new Response(text,{status:200,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow','Set-Cookie':`ssul_studio=${encodeURIComponent(access[1])}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`}})}"""
 if old not in s:
     raise SystemExit('access route anchor not found')
 s=s.replace(old,new,1)
 
+# Cloudflare Pages canonicalizes *.html to extensionless pretty URLs. Reading
+# /studio.html from ASSETS can therefore return a redirect to /studio and loop.
+# Build copies the same bytes to a non-HTML internal asset and both studio
+# entry routes read that instead.
+s=s.replace("new URL('/studio.html',url)", "new URL('/studio-shell.txt',url)")
+
 s=s.replace("if(path==='/studio/preview/'){const token=await requireStudio(request);", "if(path==='/studio/preview/'){const token=await studioToken(request);",1)
 s=s.replace("if(path.startsWith('/api/')&&!['/api/ssul_posts'].includes(path)&&!/^\\/api\\/stories\\//.test(path)){const token=await requireStudio(request);", "if(path.startsWith('/api/')&&!['/api/ssul_posts'].includes(path)&&!/^\\/api\\/stories\\//.test(path)){const token=await studioToken(request);",1)
 
-if 'studioBootstrap(access[1])' not in s or 'await studioToken(request)' not in s:
+if 'studioBootstrap(access[1])' not in s or 'await studioToken(request)' not in s or "studio-shell.txt" not in s:
     raise SystemExit('studio patch verification failed')
 p.write_text(s,encoding='utf-8')
-print('Patched production studio access: direct render + header/referrer auth fallback')
+print('Patched production studio access: direct render + no pretty-URL loop + header/referrer auth fallback')
