@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import vm from 'node:vm';
+import {stripTypeScriptTypes} from 'node:module';
+import * as studioCore from '../supabase/functions/ssul_studio/core.mjs';
 import {listPage,articlePage} from '../dist/ssul-render.mjs';
 import T from '../dist/ssul-templates.mjs';
 import source from '../dist/ssul-source-data.mjs';
@@ -134,5 +137,31 @@ test('studio job responses stream start, progress and the complete proposal meta
   const done=events.find(event=>event.type==='done');
   assert.equal(done.baseData,'{"title":"hash"}');
   assert.equal(done.promptRevision,3);
+ }finally{globalThis.fetch=saved;}
+});
+
+test('all studio buttons reach the real Edge dispatcher and job runner through the worker',async()=>{
+ const saved=globalThis.fetch,calls=[];
+ const query=()=>{const value={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert','update'])value[method]=()=>value;return value;};
+ let serve;
+ const context=vm.createContext({...studioCore,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ const source=fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'');
+ vm.runInContext(stripTypeScriptTypes(source),context);
+ // Provider and storage are mocked; HTTP routing, validation and runJob are real.
+ vm.runInContext(`credentials=async()=>({key:'test-key',model:'test-model'});callClaude=async(action,d,target,instruction,jobId,scope)=>{record({action,target,instruction,scope,sourceText:d.sourceText});return {result:{text:'결과'},calls:1,usage:[],model:'test-model',baseData:'base'};};`,context);
+ try {
+  globalThis.fetch=async(url,options)=>serve(new Request(url,options));
+  for(const action of ['generate','rewrite','extract','social','review','split','prompt']){
+   const response=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:'route-'+action,draftId:'draft-route',action,target:'before',scope:action==='rewrite'?{start:0,end:2}:undefined,instruction:'요청 반영',data:{sourceText:'원문 소재',beforeContent:'앞부분',afterContent:'뒷부분',imageIds:['image-1']}})}),{});
+   const events=(await response.text()).trim().split('\n').map(JSON.parse);
+   assert.ok(events.some(e=>e.type==='done'),JSON.stringify({action,events}));
+   assert.equal(calls.at(-1).action,action);
+   assert.equal(calls.at(-1).sourceText,'원문 소재');
+   if(action==='rewrite'){assert.equal(calls.at(-1).target,'before');assert.equal(calls.at(-1).scope.end,2);}
+  }
+  const legacy=await serve(new Request('https://edge.test',{method:'POST',body:JSON.stringify({action:'generate',jobId:'legacy-job',data:{sourceText:'소재'}})}));
+  assert.equal(legacy.status,200);
+  const malformed=await serve(new Request('https://edge.test',{method:'POST',body:JSON.stringify({action:'job_run',jobAction:'unknown',data:{}})}));
+  assert.equal(malformed.status,400);
  }finally{globalThis.fetch=saved;}
 });

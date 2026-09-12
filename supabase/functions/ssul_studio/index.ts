@@ -564,7 +564,7 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
 async function runJob(input: any) {
   const jobId = id(String(input.jobId || crypto.randomUUID()));
   const draftId = id(String(input.draftId || "new"));
-  const action = String(input.action || "");
+  const action = String(input.action === "job_run" ? input.jobAction || "" : input.action || "");
   const d = cleanDraft(input.data);
   const target = action === "rewrite" ? input.target : undefined;
   if (action === "rewrite" && !["before", "after"].includes(target)) fail(400, "수정할 구간을 지정해 주세요.");
@@ -727,7 +727,7 @@ Deno.serve(async (request) => {
     else if (action === "versions_list") result = await listVersions(String(body.id || ""));
     else if (action === "publish") result = await publishDraft(String(body.id || ""), Number(body.revision));
     else if (action === "jobs_list") result = await listJobs();
-    else if (action === "job_run") result = await runJob(body);
+    else if (action === "job_run" || ["generate", "rewrite", "extract", "social", "review", "split", "prompt"].includes(action)) result = await runJob(body);
     else if (action === "job_candidate") result = await jobCandidate(String(body.id || ""));
     else if (action === "image_upload") result = await uploadImage(body);
     else if (action === "image_url") result = await imageUrl(String(body.id || ""));
