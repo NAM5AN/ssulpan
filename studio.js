@@ -109,7 +109,7 @@
       function consume(line){
         if(!line.trim())return;const event=JSON.parse(line);
         if(event.type==='failed')throw Object.assign(new Error(event.message),{diagnostics:event.diagnostics});
-        if(event.type==='done'){done=true;if(event.diagnostics)showDiagnostics(event.diagnostics,event.jobId);if(current?.id===did)showProposal(action,event.result,target,did,event);work(labels[action]+' 완료 · 클로드 '+event.calls+'회 호출. 결과를 확인해 주세요.');}
+        if(event.type==='done'){done=true;if(event.diagnostics)showDiagnostics(event.diagnostics,event.jobId);if(current?.id===did)showProposal(action,event.result,target,did,event);work(labels[action]+' 완료 · 클로드 '+event.calls+'회 호출. 결과를 확인해 주세요.'+(event.diagnostics?.styleCheck?.warning?' · 문어체 종결이 많아 확인이 필요해요.':''));}
         else if(event.type==='progress')work(event.message);
       }
       for(;;){const part=await reader.read();if(part.done)break;pending+=decoder.decode(part.value,{stream:true});let n;while((n=pending.indexOf('\n'))>=0){const line=pending.slice(0,n);pending=pending.slice(n+1);consume(line);}}

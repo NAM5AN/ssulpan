@@ -1,5 +1,5 @@
 // Response contracts and diagnostics shared by the server and regression tests.
-export const GENERATION_RELEASE='2026-09-12-schema-diagnostics-1';
+export const GENERATION_RELEASE='2026-09-13-colloquial-style-1';
 export function strictSchema(schema){
   if(Array.isArray(schema))return schema.map(strictSchema);
   if(!schema||typeof schema!=='object')return schema;

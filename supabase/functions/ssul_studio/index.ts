@@ -1,4 +1,5 @@
 import {GENERATION_RELEASE,strictSchema,completeMetadata,fieldReport,failureInfo,safeMessage} from "./generation-support.mjs";
+import {analyzeNarrativeEndings} from "./writing-style.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { socialIssues, buildSocialRepairRequest, applySocialRepair, SOCIAL_FIELDS } from "./social-repair.mjs";
 import { createSourceBaseline, inspectSourcePreservation } from "./source-preservation.mjs";
@@ -573,6 +574,20 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
     }
     await checkpoint(trace,"validate");
     result = validateResult(action, raw, d);
+    if (["generate", "rewrite"].includes(action) && trace) {
+      const styleText = action === "generate" ? `${result.beforeContent}\n\n${result.afterContent}` : result.text;
+      trace.styleCheck = analyzeNarrativeEndings(styleText, { tone: d.options.tone });
+      if (trace.styleCheck.warning) {
+        trace.warnings.push({
+          code: "LITERARY_ENDING_RATIO",
+          message: "평서형 문어 종결 비율이 높아 사람 확인이 필요합니다.",
+          literaryEndingCount: trace.styleCheck.literaryEndingCount,
+          narrativeSentenceCount: trace.styleCheck.narrativeSentenceCount,
+          ratio: trace.styleCheck.ratio,
+        });
+      }
+      await checkpoint(trace, "style_check");
+    }
     if (action === "rewrite" && scope) {
       const text = d[target === "before" ? "beforeContent" : "afterContent"];
       const prefix = text.slice(0, scope.start);
@@ -660,7 +675,7 @@ async function runJob(input: any) {
   if ((running || []).length) fail(409, "진행 중인 클로드 작업이 있어요. 작업 기록에서 확인해 주세요.");
   const instruction = string(input.instruction, 2000);
   const model = cred.model;
-  const trace:any={version:1,release:GENERATION_RELEASE,jobId,draftId,action,model,stage:"queued",startedAt:new Date().toISOString(),events:[],providerCalls:[],repairs:[],...(input.recoverJobId?{recoveredFrom:input.recoverJobId}:{})};
+  const trace:any={version:1,release:GENERATION_RELEASE,jobId,draftId,action,model,stage:"queued",startedAt:new Date().toISOString(),events:[],providerCalls:[],repairs:[],warnings:[],...(input.recoverJobId?{recoveredFrom:input.recoverJobId}:{})};
   const { error: insertError } = await admin.from("ssul_jobs").insert({
     id: jobId,
     owner_id: OWNER_ID,

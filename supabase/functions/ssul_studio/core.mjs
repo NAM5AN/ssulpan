@@ -10,7 +10,7 @@ export function string(value,max=60000){if(typeof value!=='string')return '';if(
 export function normalizeWritingOptions(value={}) {
   const o=value && typeof value==='object' && !Array.isArray(value)?value:{};
   const options={
-    tone:['친구에게 말하듯','담담하게','음슴체'].includes(o.tone)?o.tone:'친구에게 말하듯',
+    tone:['친구에게 말하듯','담담하게','음슴체','존댓말 구어체','격식체 존댓말','담담한 문어체'].includes(o.tone)?o.tone:'친구에게 말하듯',
     tension:['보통','높게','아주 높게'].includes(o.tension)?o.tension:'높게',
     dialogue:['적게','보통','많게'].includes(o.dialogue)?o.dialogue:'보통',
     lengthMode:'source',

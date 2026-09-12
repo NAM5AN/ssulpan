@@ -7,6 +7,7 @@ import {stripTypeScriptTypes} from 'node:module';
 import * as generationSupport from '../supabase/functions/ssul_studio/generation-support.mjs';
 import * as socialRepair from '../supabase/functions/ssul_studio/social-repair.mjs';
 import * as preservation from '../supabase/functions/ssul_studio/source-preservation.mjs';
+import * as writingStyle from '../supabase/functions/ssul_studio/writing-style.mjs';
 import * as studioCore from '../supabase/functions/ssul_studio/core.mjs';
 import {listPage,articlePage} from '../dist/ssul-render.mjs';
 import T from '../dist/ssul-templates.mjs';
@@ -147,7 +148,7 @@ test('all studio buttons reach the real Edge dispatcher and job runner through t
  const saved=globalThis.fetch,calls=[];
  const query=()=>{const value={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert','update'])value[method]=()=>value;return value;};
  let serve;
- const context=vm.createContext({...studioCore,...generationSupport,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ const context=vm.createContext({...studioCore,...generationSupport,...writingStyle,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
  const source=fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'');
  vm.runInContext(stripTypeScriptTypes(source),context);
  // Provider and storage are mocked; HTTP routing, validation and runJob are real.
@@ -203,7 +204,7 @@ test('strict provider schema removes unsupported constraints without weakening l
 function edgeHarness(provider){
  let serve;const updates=[];
  const query=()=>{const q={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert'])q[method]=()=>q;q.update=value=>{updates.push(structuredClone(value));return q;};return q;};
- const context=vm.createContext({...studioCore,...generationSupport,...socialRepair,...preservation,Response,Request,URL,TextEncoder,TextDecoder,AbortSignal,crypto:crypto.webcrypto,console,Error,fetch:provider,createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ const context=vm.createContext({...studioCore,...generationSupport,...socialRepair,...preservation,...writingStyle,Response,Request,URL,TextEncoder,TextDecoder,AbortSignal,crypto:crypto.webcrypto,console,Error,fetch:provider,createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
  vm.runInContext(stripTypeScriptTypes(fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'')),context);
  vm.runInContext(`credentials=async()=>({key:'test-key',model:'test-model'});getWritingPrompt=async()=>({prompt:'',revision:1});putArtifact=async()=>{};`,context);
  return {context,updates,serve};
@@ -236,4 +237,37 @@ test('worker passes diagnostics on failed streams and exposes history diagnostic
   const failed=(await r.text()).trim().split('\n').map(JSON.parse).find(e=>e.type==='failed');assert.deepEqual(failed.diagnostics,diagnostics);
   const history=await worker.fetch(new Request('https://ssulpan.test/api/jobs/job-1/diagnostics'),{});assert.deepEqual((await history.json()).diagnostics,diagnostics);
  }finally{globalThis.fetch=saved;}
+});
+
+test('the applied master prompt makes colloquial and eumseongche defaults explicit without overriding action or quotations',()=>{
+ assert.ok(studioCore.masterPrompt.indexOf('# 가장 중요한 문체 원칙')<studioCore.masterPrompt.indexOf('# 작업 모드'));
+ assert.match(studioCore.masterPrompt,/options\.tone="음슴체"/);
+ assert.match(studioCore.masterPrompt,/반말 구어체에 `~함`, `~했음`, `~임`/);
+ assert.match(studioCore.masterPrompt,/따옴표 안 대사[\s\S]*적용하지 않는다/);
+ assert.match(studioCore.masterPrompt,/도구 스키마 > `action`[\s\S]*options`에 명시된 말투 > 가장 중요한 문체 원칙의 기본값/);
+ assert.equal(studioCore.normalizeWritingOptions({tone:'음슴체'}).tone,'음슴체');
+ assert.equal(studioCore.normalizeWritingOptions({tone:'존댓말 구어체'}).tone,'존댓말 구어체');
+ assert.equal(studioCore.normalizeWritingOptions({tone:'담담한 문어체'}).tone,'담담한 문어체');
+ assert.equal(studioCore.normalizeWritingOptions({}).tone,'친구에게 말하듯');
+});
+
+test('literary ending ratio detects written narration including contracted past endings',()=>{
+ const report=writingStyle.analyzeNarrativeEndings('역에 도착했다. 다음 장면은 흐릿했다. 확신이 안 섰다. 일이 끝났다. 집에 갔다. 지금도 기억남.',{tone:'친구에게 말하듯'});
+ assert.equal(report.narrativeSentenceCount,6);
+ assert.equal(report.literaryEndingCount,5);
+ assert.equal(report.countsByEnding['ㅆ다 축약'],3);
+ assert.equal(report.warning,true);
+ assert.equal(report.ratio,0.833);
+});
+
+test('ending ratio excludes dialogue and quotations and honors only an explicit literary tone',()=>{
+ const quoted=writingStyle.analyzeNarrativeEndings('"그건 내가 했다."\n“예전에는 학생이었다.”\n- 나는 그때 정말 놀랐다.\n기억 안 남. 하 진짜.',{tone:'음슴체'});
+ assert.equal(quoted.literaryEndingCount,0);
+ assert.equal(quoted.excludedQuotedSpanCount,2);
+ assert.equal(quoted.excludedDialogueLineCount,1);
+ assert.equal(quoted.warning,false);
+ const narrative='역에 도착했다. 다음 장면은 흐릿했다. 확신이 안 섰다. 일이 끝났다.';
+ assert.equal(writingStyle.analyzeNarrativeEndings(narrative,{tone:'존댓말 구어체'}).warning,true);
+ const exempt=writingStyle.analyzeNarrativeEndings(narrative,{tone:'담담한 문어체'});
+ assert.equal(exempt.exempt,true);assert.equal(exempt.warning,false);
 });
