@@ -106,3 +106,17 @@ test('cross-origin pages cannot silently mutate the shared studio',async()=>{
   assert.equal(response.status,403);assert.equal(called,false);
  }finally{globalThis.fetch=saved;}
 });
+test('studio job responses stream start, progress and the complete proposal metadata',async()=>{
+ const saved=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>Response.json({ok:true,id:'job-1',result:{title:'결과'},usage:[{input_tokens:1}],model:'claude-sonnet-5',calls:1,promptUsage:null,promptRevision:3,baseData:'{"title":"hash"}',target:'before'});
+  const response=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json'},body:JSON.stringify({jobId:'job-1',draftId:'draft-1',action:'generate',data:{}})}),{});
+  assert.equal(response.headers.get('content-type'),'application/x-ndjson; charset=utf-8');
+  const events=(await response.text()).trim().split('\n').map(JSON.parse);
+  assert.equal(events[0].type,'started');
+  assert.ok(events.some(event=>event.type==='progress'));
+  const done=events.find(event=>event.type==='done');
+  assert.equal(done.baseData,'{"title":"hash"}');
+  assert.equal(done.promptRevision,3);
+ }finally{globalThis.fetch=saved;}
+});
