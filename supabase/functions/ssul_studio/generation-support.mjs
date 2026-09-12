@@ -1,5 +1,7 @@
 // Response contracts and diagnostics shared by the server and regression tests.
-export const GENERATION_RELEASE='2026-09-13-colloquial-style-1';
+export const GENERATION_RELEASE='2026-09-13-colloquial-style-2';
+const toolSerializationPattern = /<\/?(?:storyBible|gateLine|beforeContent|afterContent|title|titles|category|teaser|hook|coverDetail|caption|hashtags|imageText)\s*>|<parameter\s+name\s*=/iu;
+export function hasToolSerializationArtifact(value){return typeof value==='string'&&toolSerializationPattern.test(value);}
 export function strictSchema(schema){
   if(Array.isArray(schema))return schema.map(strictSchema);
   if(!schema||typeof schema!=='object')return schema;
@@ -22,6 +24,7 @@ export function fieldReport(schema,value){
     if(!returned.includes(key))continue;
     const rule=schema.properties[key],item=value[key];
     if(rule.type==='string'&&(typeof item!=='string'||(!['imageText','uncertain'].includes(key)&&!item.trim())))invalid.push({field:key,reason:'nonempty_string_required'});
+    else if(rule.type==='string'&&hasToolSerializationArtifact(item))invalid.push({field:key,reason:'tool_serialization_artifact'});
     if(rule.type==='array'&&(!Array.isArray(item)||(rule.items?.type==='string'&&item.some(v=>typeof v!=='string'))))invalid.push({field:key,reason:'array_type'});
     if(rule.type==='integer'&&!Number.isInteger(item))invalid.push({field:key,reason:'integer_required'});
   }
@@ -38,7 +41,7 @@ export async function completeMetadata(raw,call){
   const result={...raw};
   // OCR is handled separately; absent imageText has one unambiguous value.
   if(result.imageText===undefined)result.imageText='';
-  const fields=METADATA.filter(key=>typeof result[key]!=='string'||!result[key].trim()||result[key].length>CAPACITY[key]);
+  const fields=METADATA.filter(key=>typeof result[key]!=='string'||!result[key].trim()||result[key].length>CAPACITY[key]||hasToolSerializationArtifact(result[key]));
   if(!fields.length)return {result,repaired:[]};
   if(!['beforeContent','afterContent'].every(key=>typeof result[key]==='string'&&result[key].trim()))return {result,repaired:[]};
   const schema={type:'object',additionalProperties:false,properties:Object.fromEntries(fields.map(key=>[key,{type:'string',description:'부가 필드 기술 한도 '+CAPACITY[key]+'자. 본문 분량에 적용하지 않는다.'}])),required:fields};

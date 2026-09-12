@@ -88,7 +88,7 @@ export function validateResult(action,r,d){
     if(!Array.isArray(r.titles)||r.titles.length!==3||r.titles.some(x=>typeof x!=='string'||!x.trim()))throw new HttpError(502,'제목 후보가 완성되지 않았어요. 기존 원고는 유지했습니다.');
     if(!r.titles.includes(r.title)||typeof r.imageText!=='string')throw new HttpError(502,'생성 결과 형식을 확인하지 못했어요. 기존 원고는 유지했습니다.');
     const output={...d,titles:r.titles};for(const key of keys)output[key]=r[key];
-    return cleanDraft(output);
+    return {...cleanDraft(output),imageText:r.imageText};
   }
   if(action==='rewrite'){if(typeof r.text!=='string'||!r.text.trim())throw new HttpError(502,'수정 원고가 비어 있어요.');return {text:string(r.text)};}
   if(action==='extract'){if(typeof r.text!=='string'||!r.text.trim()||typeof r.uncertain!=='string')throw new HttpError(502,'이미지에서 글을 읽지 못했어요.');return {text:string(r.text,250000),uncertain:string(r.uncertain,2000)};}

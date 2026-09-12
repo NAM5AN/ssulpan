@@ -190,6 +190,21 @@ test('metadata recovery rejects body replacement and never fabricates missing bo
  assert.equal(calls,0);assert.ok(!out.result.beforeContent);
 });
 
+test('tool serialization leaked into storyBible is repaired without changing either body',async()=>{
+ const raw=validGenerated();raw.storyBible+='</storyBible>\n<parameter name="gateLine">오염된 표식';
+ const before=raw.beforeContent,after=raw.afterContent;let calls=0;
+ const providerReport=generationSupport.fieldReport(studioCore.schemas.generate,raw);
+ assert.deepEqual(providerReport.invalid,[{field:'storyBible',reason:'tool_serialization_artifact'}]);
+ const out=await generationSupport.completeMetadata(raw,async request=>{calls++;assert.deepEqual(request.schema.required,['storyBible']);return {storyBible:'화자가 인형을 잃어버렸고 공식 계정에서 새 인형을 보내줌.'};});
+ assert.equal(calls,1);assert.equal(out.result.beforeContent,before);assert.equal(out.result.afterContent,after);
+ assert.equal(generationSupport.hasToolSerializationArtifact(out.result.storyBible),false);
+});
+
+test('validated generate result retains the thirteenth imageText field',()=>{
+ const result=studioCore.validateResult('generate',validGenerated(),studioCore.cleanDraft({}));
+ assert.equal(Object.hasOwn(result,'imageText'),true);assert.equal(result.imageText,'');
+});
+
 test('strict provider schema removes unsupported constraints without weakening local contracts',()=>{
  const schema=generationSupport.strictSchema(studioCore.schemas.generate);
  assert.equal(schema.additionalProperties,false);assert.equal(schema.required.length,13);
