@@ -55,10 +55,18 @@ DNS를 Cloudflare에서 관리하면 HTTPS 인증서도 Cloudflare가 처리합�
 프론트는 Vercel을 사용하지 않습니다.
 
 - 공개 글/조회수: Supabase Edge Function `ssul_public`
-- 제작실 저장/게시/이미지: `ssul_admin`
-- Claude/GPT: `ssul_generate`
+- 제작실 저장/게시/이미지/Claude: `ssul_studio`
 - DB/Storage: 기존 `cheheomdan` Supabase 프로젝트의 `ssul_*`
 
 브라우저에는 Supabase URL과 publishable key만 포함됩니다. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, service-role/secret key는 Supabase 서버 함수에만 있습니다.
 
 <!-- Initial Cloudflare Pages deployment trigger -->
+
+
+## 제작실 공개 방식
+
+- 진입 주소: `/studio/`
+- 로그인, 쿠키 인증, 비밀 접근 주소가 없습니다.
+- 제작실 원고, 작성 지침, 작업 기록은 방문자 모두가 같은 공용 공간을 사용합니다.
+- 주소를 아는 사람은 원고 수정, 게시, 이미지 업로드와 Claude 호출을 할 수 있습니다.
+- 서비스 역할 키와 Claude API 키는 Supabase Edge Function 안에서만 사용하며 브라우저로 보내지 않습니다.

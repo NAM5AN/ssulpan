@@ -67,3 +67,35 @@ test('legacy details redirect and the original reader view endpoint maps 001 to 
   assert.equal(r.status,200);assert.equal(submitted.id,'1');assert.equal((await r.json()).views,18);
  }finally{globalThis.fetch=saved;}
 });
+
+test('studio and studio APIs open without login, cookie or access token',async()=>{
+ const saved=globalThis.fetch,calls=[];
+ try{
+  globalThis.fetch=async(url,options={})=>{
+   const body=JSON.parse(options.body||'{}'),headers=new Headers(options.headers||{});
+   calls.push({url:String(url),body,headers});
+   if(body.action==='drafts_list')return Response.json({ok:true,drafts:[]});
+   return Response.json({ok:true});
+  };
+  const env={ASSETS:{fetch:async()=>new Response('<select id="story-select" aria-label="이야기 선택"></select>',{headers:{'Content-Type':'text/html'}})}};
+  const studio=await worker.fetch(new Request('https://ssulpan.test/studio/'),env);
+  assert.equal(studio.status,200);
+  assert.ok((await studio.text()).includes('story-select'));
+  assert.equal(calls.at(-1).headers.has('x-studio-token'),false);
+  const drafts=await worker.fetch(new Request('https://ssulpan.test/api/drafts'),env);
+  assert.equal(drafts.status,200);
+  assert.deepEqual(await drafts.json(),{ok:true,drafts:[]});
+  assert.equal(calls.at(-1).headers.has('x-studio-token'),false);
+  const legacy=await worker.fetch(new Request('https://ssulpan.test/studio/access/abcdefghijklmnopqrstuvwxyz'),env);
+  assert.equal(legacy.status,302);
+  assert.equal(legacy.headers.get('location'),'https://ssulpan.test/studio/');
+ }finally{globalThis.fetch=saved;}
+});
+test('cross-origin pages cannot silently mutate the shared studio',async()=>{
+ let called=false;const saved=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>{called=true;return Response.json({ok:true})};
+  const response=await worker.fetch(new Request('https://ssulpan.test/api/settings',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'}),{});
+  assert.equal(response.status,403);assert.equal(called,false);
+ }finally{globalThis.fetch=saved;}
+});
