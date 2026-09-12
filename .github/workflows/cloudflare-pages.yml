@@ -26,12 +26,14 @@ jobs:
           python3 scripts/build-original.py
           cp studio.css dist/studio.css
           cp recovered/sseolzip/implementation-review/baseline/public/studio.js dist/studio.js
+          cp dist/studio.html dist/studio-shell.txt
           python3 scripts/patch-studio-access.py
           node --check dist/studio.js
           node --check dist/_worker.js
           grep -q 'id="story-select"' dist/studio.html
           ! grep -q '관리자 로그인' dist/studio.html
           grep -q 'studioBootstrap(access\[1\])' dist/_worker.js
+          grep -q 'studio-shell.txt' dist/_worker.js
 
       - name: Verify original UI, full stories and backend adapter
         run: node --test tests/original-ui.test.mjs
