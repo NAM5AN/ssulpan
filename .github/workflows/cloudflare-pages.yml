@@ -30,6 +30,9 @@ jobs:
           python3 scripts/patch-studio-access.py
           node --check dist/studio.js
           node --check dist/_worker.js
+          node --check dist/ssul-render.mjs
+          node --check dist/ssul-community.mjs
+          grep -q 'Math.ceil(filtered.length/20)' dist/ssul-community.mjs
           grep -q 'id="new-story"' dist/studio.html
           ! grep -q 'id="story-select"' dist/studio.html
           grep -q "lengthMode:'source'" dist/studio.js

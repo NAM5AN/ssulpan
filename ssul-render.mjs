@@ -1,54 +1,15 @@
-// Data binding only. All UI templates are extracted from the captured original HTML.
-import T from './ssul-templates.mjs';
-const escape = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const fill = (template, data) => template.replace(/\{\{([\w-]+)\}\}/g, (_, key) => String(data[key] ?? ''));
-const cats = ['직장생활', '인간관계', '일상'];
-export function dbId(value) { const id=String(value??''); return /^0*[1-6]$/.test(id) ? String(Number(id)) : id; }
-export function storyUrl(id) { const value=dbId(id); return `/stories/${encodeURIComponent(/^[1-6]$/.test(value)?value.padStart(3,'0'):value)}/`; }
-const views = n => Math.max(0, Number(n)||0).toLocaleString('ko-KR');
-const parts = s => String(s||'').replace(/\r\n?/g,'\n').split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
-const paragraphs = s => parts(s).map(p=>`<p>${escape(p).replace(/\n/g,'<br>')}</p>`).join('');
-function imageFor(post) {
-  try { if(post.thumbnailUrl && new URL(post.thumbnailUrl).protocol==='https:') return post.thumbnailUrl; } catch {}
-  return '/community/'+({'직장생활':'office','인간관계':'friends','일상':'night'}[post.category]||'office')+'.png';
-}
-function fields(p) { return {url:escape(storyUrl(p.id)),title:escape(p.title),teaser:escape(p.teaser),category:escape(p.category),views:views(p.views??p.view_count),hook:escape(p.hook||p.title),hookLabel:escape((p.hook||p.title||'').replace(/\s+/g,' ')),detail:escape(p.coverDetail||''),image:escape(imageFor(p))}; }
-function queryLink(options={}, hash=true) {
-  const p=new URLSearchParams(); for(const k of ['q','category','tag','order','view','page'])if(options[k] && options[k]!=='newest' && !(k==='page'&&Number(options[k])===1))p.set(k,String(options[k]));
-  return '/'+(p.size?'?'+p.toString():'')+(hash?'#story-feed':'');
-}
-function normalize(p) { return {...p,id:dbId(p.id),views:Number(p.views??p.view_count??0),date:p.publishedAt||p.published_at||p.date||'',tags:Array.isArray(p.tags)?p.tags:[]}; }
-export function renderHome(raw, url) {
-  const all=raw.map(normalize).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
-  const category=url.searchParams.get('category')||'', tag=url.searchParams.get('tag')||'', q=(url.searchParams.get('q')||'').slice(0,100);
-  const order=url.searchParams.get('order')||'newest', view=url.searchParams.get('view')==='cards'?'cards':'list';
-  let posts=all.filter(p=>(!category||p.category===category)&&(!tag||p.tags.includes(tag))&&(!q||[p.title,p.teaser,...p.tags,...(p.hashtags||[])].join(' ').toLocaleLowerCase().includes(q.toLocaleLowerCase())));
-  if(order==='oldest')posts.reverse();
-  if(order==='popular')posts.sort((a,b)=>b.views-a.views||b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
-  const pages=Math.max(1,Math.ceil(posts.length/6)), page=Math.min(pages,Math.max(1,parseInt(url.searchParams.get('page')||url.pathname.match(/^\/page\/(\d+)/)?.[1]||'1',10)||1));
-  const chosen=posts.slice((page-1)*6,page*6), popular=[...all].sort((a,b)=>b.views-a.views||b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
-  const current={q,category,tag,order,view};
-  const name=q?`검색 결과: ${q}`:category|| (tag?'#'+tag:order==='popular'?'인기글':'전체 글');
-  const featured=all.slice(0,3), isHome=!category&&!tag&&!q&&order!=='popular'&&page===1;
-  const data={feedTitle:escape(name),pageTitle:escape(name),count:posts.length,page,pages,query:escape(q),listClass:view==='list'?'is-list':'',
-    rows:chosen.map(p=>fill(T[view==='cards'?'card':'row'],fields(p))).join(''),
-    picks:popular.slice(0,5).map(p=>fill(T.pick,fields(p))).join(''),
-    boards:cats.map(c=>fill(T.board,{url:escape(queryLink({category:c},false)),category:escape(c),count:all.filter(p=>p.category===c).length})).join(''),
-    tags:[...new Set(all.flatMap(p=>p.tags))].slice(0,24).map(t=>fill(T.tag,{tag:escape(t),url:escape(queryLink({tag:t},false))})).join(''),
-    hero:isHome&&featured.length?fill(T.hero,{slides:featured.map((p,i)=>fill(T.slide,{...fields(p),slideIndex:i})).join(''),slideCount:featured.length}):'',
-    thumbnailScripts:view==='cards'?'<script src="/cover.js" defer></script><script src="/thumbnails.js" defer></script>':'',
-    roundup:isHome?fill(T.roundup,Object.fromEntries(cats.map((c,i)=>['roundup'+i,all.filter(p=>p.category===c).slice(0,2).map(p=>`<li><a href="${escape(storyUrl(p.id))}">${escape(p.title)}</a></li>`).join('')]))):''};
-  data.pagination=(page>1?`<a href="${escape(queryLink({...current,page:page-1}))}">‹ 이전</a>`:'<span aria-disabled="true">‹ 이전</span>')+`<span aria-current="page">${page}</span>`+(page<pages?`<a href="${escape(queryLink({...current,page:page+1}))}">다음 ›</a>`:'<span aria-disabled="true">다음 ›</span>');
-  ['newest','oldest','popular'].forEach((o,i)=>{data['feed-sort'+i+'Url']=escape(queryLink({...current,order:o}));data['feed-sort'+i+'Current']=order===o?'aria-current="true"':'';});
-  ['cards','list'].forEach((v,i)=>{data['view-options'+i+'Url']=escape(queryLink({...current,view:v}));data['view-options'+i+'Current']=view===v?'aria-current="true"':'';});
-  ['',...cats].forEach((c,i)=>{data['feed-tabs'+i+'Url']=escape(queryLink({...current,category:c}));data['feed-tabs'+i+'Current']=category===c?'aria-current="page"':'';});
-  [!category&&!q&&!tag&&order!=='popular',...cats.map(c=>category===c),order==='popular',false].forEach((active,i)=>data['community-nav'+i+'Current']=active?'aria-current="page"':'');
-  const out=fill(T.home,data); if(/\{\{[\w-]+\}\}/.test(out))throw new Error('unbound homepage data slot'); return out;
-}
-export function renderStory(post, raw) {
-  const p=normalize(post), all=raw.map(normalize).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)), i=all.findIndex(x=>x.id===p.id);
-  const prev=all[(i-1+all.length)%all.length],next=all[(i+1)%all.length];
-  const after=parts(p.afterContent), fade=Math.max(80,Math.min(300,Number(p.fadeHeight)||180));
-  const data={...fields(p),beforeHtml:paragraphs(p.beforeContent),afterHtml:paragraphs(p.afterContent)+(after.length?'<div class="story-end">이야기 끝</div>':''),sampleHtml:paragraphs(after.slice(0,2).join('\n\n')),gateLine:escape(p.gateLine||'그다음 이야기가 궁금하다면?'),fade,gateHidden:after.length?'':'hidden',readerData:JSON.stringify({id:p.id,fadeHeight:fade,trackViews:true}).replace(/</g,'\\u003c'),related:all.length>1?fill(T.related,{prevUrl:escape(storyUrl(prev.id)),prevTitle:escape(prev.title),nextUrl:escape(storyUrl(next.id)),nextTitle:escape(next.title)}):''};
-  return fill(T.reader,data);
+import {siteHeader,siteFooter,communityPage,formatViews} from './ssul-community.mjs';
+export {siteHeader,siteFooter};
+export const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const paras=t=>String(t||'').split(/\n\s*\n/).filter(x=>x.trim()).map(x=>`<p>${escape(x)}</p>`).join('');
+const chevron='<span aria-hidden="true">›</span>';
+const pageURL=n=>n===1?'/':`/page/${n}/`;
+export function shell(title,body,script='',options={}) {return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} | 썰판</title><meta name="description" content="직장생활, 인간관계, 일상의 이야기."><meta name="theme-color" content="#fd582b"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" sizes="1254x1254" href="/favicon.png?v=ssulpan-1"><link rel="apple-touch-icon" href="/favicon.png?v=ssulpan-1"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/community.css"></head><body id="top" class="${options.home?'community-home':''}"><a class="skip" href="#main">본문 바로가기</a>${siteHeader(options)}${body}${siteFooter()}${script}</body></html>`;}
+export function listPage(posts,page=1,options={}){const result=communityPage(posts,page,options);if(!result)return null;return shell(result.heading,result.body,(result.headerOptions.view==='cards'?'<script src="/cover.js" defer></script><script src="/thumbnails.js" defer></script>':'')+'<script src="/community.js" defer></script>',{...result.headerOptions,home:true});}
+export function articlePage(s,posts=[],preview=false,ad=null){
+  const i=posts.findIndex(x=>x.id===s.id),previous=posts[(i-1+posts.length)%posts.length],next=posts[(i+1)%posts.length];
+  const related=posts.length>1?`<nav class="related" aria-label="이전 글과 다음 글">${[['이전 글',previous,'prev'],['다음 글',next,'next']].map(([label,p,rel])=>`<div class="related-item"><h2>${label}</h2><a href="/stories/${escape(p.id)}/" rel="${rel}"><span>${escape(p.title)}</span>${chevron}</a></div>`).join('')}</nav>`:'';
+  let advert='';if(ad){try{const u=new URL(ad.url);if(u.protocol==='https:'&&['link.coupang.com','www.coupang.com','coupa.ng'].includes(u.hostname)&&!u.username&&!u.password)advert=`<aside class="ad"><small>광고 · 쿠팡 파트너스</small><a href="${escape(u.href)}" target="_blank" rel="sponsored noopener noreferrer">${escape(ad.title)}</a><p>이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p></aside>`;}catch{}}
+  const data=JSON.stringify({id:s.id,fadeHeight:s.fadeHeight||180,trackViews:!preview}).replaceAll('<','\\u003c');
+  return shell(s.title||'본문 미리보기',`<main id="main" class="article-wrap"><a class="back" href="${pageURL(Math.max(0,Math.floor(i/20))+1)}">‹ 전체 글</a><article><header class="article-heading"><span class="article-category">${escape(s.category)}</span><h1>${escape(s.title)}</h1><div class="article-meta">썰판${preview?'':' · 조회 <span id="story-view-count">'+formatViews(s.views)+'</span>'}</div></header><div class="article-body" id="reader"><div id="opening">${paras(s.beforeContent)}</div><section class="read-gate" id="read-gate" style="--fade-height:${s.fadeHeight||180}px" ${s.afterContent?'':'hidden'} aria-label="이어 읽기"><div class="fade-sample" id="fade-sample" aria-hidden="true" inert>${paras(s.afterContent.split(/\n\s*\n/).slice(0,2).join('\n\n'))}</div><div class="gate-copy"><h2 id="gate-heading">${escape(s.gateLine||'그다음 이야기가 궁금하다면?')}</h2><button class="continue-button" id="continue-reading" aria-controls="continuation" aria-expanded="false">계속 읽기</button><span class="gate-preview-note">현재는 광고 없이 이어 읽을 수 있어요.</span></div></section><div id="continuation" hidden tabindex="-1">${paras(s.afterContent)}<div class="story-end">이야기 끝</div></div><p class="reader-status" id="reader-status" role="status"></p></div>${advert}</article>${related}</main><noscript><style>#read-gate{display:none}#continuation[hidden]{display:block!important}</style></noscript>`,`<script type="application/json" id="reader-data">${data}</script><script src="/reader.js" defer></script>`);
 }

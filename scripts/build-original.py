@@ -155,7 +155,7 @@ def main():
     # Existing authenticated studio stays independent until its protected original HTML is supplied.
     for f in ['config.js','data.js','styles.css','studio.html','studio.js','instagram.html','instagram.js','manuscript.html','manuscript.js','robots.txt','_headers','_redirects','_routes.json','_worker.js']:
         if (ROOT/f).exists(): shutil.copyfile(ROOT/f,OUT/f)
-    for f in ['ssul-render.mjs']:
+    for f in ['ssul-render.mjs','ssul-community.mjs']:
         shutil.copyfile(ROOT/f,OUT/f)
     for name in ['_headers','_redirects']:
         if not (OUT/name).exists(): (OUT/name).write_text('')
