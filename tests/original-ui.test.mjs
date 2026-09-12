@@ -24,7 +24,7 @@ test('original list/card, category, keyword, order and pagination bindings',()=>
  assert.equal((home('/?q=결혼식').match(/class="story-row"/g)||[]).length,1);
  assert.equal((home('/?view=cards').match(/data-story-thumbnail/g)||[]).length,6);
  assert.ok(home('/?view=cards').includes('/thumbnails.js'));
- assert.ok(home('/?order=oldest').indexOf('class="story-row" href="/stories/006/')>0);
+ assert.ok(home('/?order=oldest').indexOf(`class="story-row" href="/stories/${rows.at(-1).id}/`)>0);
 });
 test('current GPT Sites renderer keeps twenty stories on each list page',()=>{
  const many=Array.from({length:25},(_,i)=>({...rows[i%rows.length],id:`post-${i+1}`,title:`글 ${i+1}`}));
