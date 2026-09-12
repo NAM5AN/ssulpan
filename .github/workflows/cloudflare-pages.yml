@@ -25,12 +25,17 @@ jobs:
         run: |
           python3 scripts/build-original.py
           cp studio.css dist/studio.css
-          cp recovered/sseolzip/implementation-review/baseline/public/studio.js dist/studio.js
+          cp studio.js dist/studio.js
           cp dist/studio.html dist/studio-shell.txt
           python3 scripts/patch-studio-access.py
           node --check dist/studio.js
           node --check dist/_worker.js
-          grep -q 'id="story-select"' dist/studio.html
+          grep -q 'id="new-story"' dist/studio.html
+          ! grep -q 'id="story-select"' dist/studio.html
+          grep -q "lengthMode:'source'" dist/studio.js
+          grep -q 'sourceImageKey' dist/studio.js
+          grep -q 'job_candidate' dist/_worker.js
+          grep -q 'settings_save' dist/_worker.js
           ! grep -q '관리자 로그인' dist/studio.html
           grep -q 'studio-shell.txt' dist/_worker.js
           grep -q "if(path==='/studio'||path==='/studio/')" dist/_worker.js
