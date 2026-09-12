@@ -1,2 +1,5 @@
+[functions.ssul_public]
+verify_jwt = false
+
 [functions.ssul_studio]
 verify_jwt = false

@@ -47,6 +47,17 @@ test('canonical recovered sample content via compatibility API without overwriti
   assert.equal((await changed.json()).posts[0].beforeContent,'새로 작성한 내용');
  } finally {globalThis.fetch=saved;}
 });
+test('public post API strips studio-only fields and normalizes public display values',async()=>{
+ const saved=globalThis.fetch;
+ try {
+  globalThis.fetch=async()=>Response.json({ok:true,posts:[{...source.previousSeeds[0],title:'공개 필드 점검',storyBible:'내부 인물 메모',sourceText:'가져온 원문',sourceImageKey:'private/path',titles:['후보'],status:'published',hashtags:['#썰판','#썰','#직장생활'],fadeHeight:230}]});
+  const response=await worker.fetch(new Request('https://ssulpan.test/api/ssul_posts'),{}),result=await response.json(),post=result.posts[0];
+  assert.deepEqual(Object.keys(post).sort(),['afterContent','beforeContent','caption','category','coverDetail','fadeHeight','gateLine','hashtags','hook','id','teaser','title','views'].sort());
+  assert.equal(post.hashtags,'#썰판 #썰 #직장생활');
+  assert.equal(post.fadeHeight,230);
+  for(const key of ['storyBible','sourceText','sourceImageKey','titles','status'])assert.equal(key in post,false,key);
+ } finally {globalThis.fetch=saved;}
+});
 test('the exact six stored DB samples receive complete recovered text but preserve live counts',async()=>{
  const saved=globalThis.fetch;
  const stored=source.previousSeeds.map(p=>({...p,views:37}));
@@ -56,7 +67,7 @@ test('the exact six stored DB samples receive complete recovered text but preser
   globalThis.fetch=async()=>Response.json({ok:true,posts:stored});
   const response=await worker.fetch(new Request('https://ssulpan.test/api/ssul_posts'),{});
   const {posts}=await response.json();
-  for(const p of posts){const original=source.originals.find(x=>x.id===p.id);assert.equal(p.beforeContent,original.beforeContent);assert.equal(p.afterContent,original.afterContent);assert.equal(p.views,37);}
+  for(const p of posts){const original=source.originals.find(x=>dbId(x.id)===dbId(p.id));assert.equal(p.beforeContent,original.beforeContent);assert.equal(p.afterContent,original.afterContent);assert.equal(p.views,37);}
   stored[1].afterContent='관리자가 실제로 수정한 결말';
   const edited=await worker.fetch(new Request('https://ssulpan.test/api/ssul_posts'),{});
   assert.equal((await edited.json()).posts[1].afterContent,'관리자가 실제로 수정한 결말');

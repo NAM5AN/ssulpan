@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { socialIssues, buildSocialRepairRequest, applySocialRepair, SOCIAL_FIELDS } from "./social-repair.mjs";
 import { createSourceBaseline, inspectSourcePreservation } from "./source-preservation.mjs";
 import {
@@ -54,7 +54,7 @@ function postToDraft(p: any) {
     caption: p.caption,
     hashtags: Array.isArray(p.hashtags) ? p.hashtags.join(" ") : "",
     titles: p.titles || [],
-    fadeHeight: 180,
+    fadeHeight: p.fade_height || 180,
     imageIds: Array.isArray(p.source_image_paths) ? p.source_image_paths : [],
   });
 }
@@ -81,6 +81,7 @@ function postRow(draftId: string, d: any) {
     caption: d.caption || "",
     hashtags,
     tags,
+    fade_height: Math.max(80, Math.min(300, Number(d.fadeHeight) || 180)),
     source_image_paths: Array.isArray(d.imageIds) ? d.imageIds : [],
     published_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
