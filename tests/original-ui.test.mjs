@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
+import * as generationSupport from '../supabase/functions/ssul_studio/generation-support.mjs';
+import * as socialRepair from '../supabase/functions/ssul_studio/social-repair.mjs';
+import * as preservation from '../supabase/functions/ssul_studio/source-preservation.mjs';
 import * as studioCore from '../supabase/functions/ssul_studio/core.mjs';
 import {listPage,articlePage} from '../dist/ssul-render.mjs';
 import T from '../dist/ssul-templates.mjs';
@@ -144,7 +147,7 @@ test('all studio buttons reach the real Edge dispatcher and job runner through t
  const saved=globalThis.fetch,calls=[];
  const query=()=>{const value={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert','update'])value[method]=()=>value;return value;};
  let serve;
- const context=vm.createContext({...studioCore,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ const context=vm.createContext({...studioCore,...generationSupport,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
  const source=fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'');
  vm.runInContext(stripTypeScriptTypes(source),context);
  // Provider and storage are mocked; HTTP routing, validation and runJob are real.
@@ -163,5 +166,74 @@ test('all studio buttons reach the real Edge dispatcher and job runner through t
   assert.equal(legacy.status,200);
   const malformed=await serve(new Request('https://edge.test',{method:'POST',body:JSON.stringify({action:'job_run',jobAction:'unknown',data:{}})}));
   assert.equal(malformed.status,400);
+ }finally{globalThis.fetch=saved;}
+});
+
+function validGenerated(){return {title:'잃어버린 인형',titles:['잃어버린 인형','다시 온 선물','뜻밖의 답장'],category:'일상',teaser:'인형을 잃어버린 뒤 답장이 왔다.',beforeContent:'여행 중 인형을 잃어버렸다.\n\n그런데 공식 계정에서 연락이 왔다.',afterContent:'며칠 뒤 새 인형과 손글씨 쪽지가 도착했다.',storyBible:'화자는 여행 중 인형을 잃어버렸다. 공식 계정이 새 인형을 보내줬다.',gateLine:'며칠 뒤 도착한 상자에는 뭐가 있었을까.',hook:'잃어버린 인형\n그런데 며칠 뒤\n답장이 왔다',coverDetail:'그런데 공식 계정에서 연락이 왔다.',caption:'여행 중 잃어버린 인형. 이런 답장을 받는다면?\n전체 글은 프로필 링크에서',hashtags:'#썰판 #썰 #인형 #여행 #선물',imageText:''};}
+
+test('missing gateLine is precisely diagnosed and repaired once with both bodies frozen',async()=>{
+ const raw=validGenerated();delete raw.gateLine;const original=structuredClone(raw);let calls=0;
+ const report=generationSupport.fieldReport(studioCore.schemas.generate,raw);
+ assert.deepEqual(report.missing,['gateLine']);
+ assert.throws(()=>studioCore.validateResult('generate',raw,studioCore.cleanDraft({})),error=>error.code==='RESULT_SCHEMA_INVALID'&&error.details.missing[0]==='gateLine');
+ const repaired=await generationSupport.completeMetadata(raw,async req=>{calls++;assert.deepEqual(req.schema.required,['gateLine']);const context=JSON.parse(req.text);assert.equal(context.frozenContent.beforeContent,raw.beforeContent);assert.equal(context.frozenContent.afterContent,raw.afterContent);return {gateLine:'상자 안에는 예상하지 못한 쪽지가 있었다.'};});
+ assert.equal(calls,1);assert.deepEqual(raw,original);assert.deepEqual(repaired.repaired,['gateLine']);
+ for(const key of Object.keys(original))assert.deepEqual(repaired.result[key],original[key],key);
+ assert.equal(studioCore.validateResult('generate',repaired.result,studioCore.cleanDraft({})).beforeContent,raw.beforeContent);
+});
+
+test('metadata recovery rejects body replacement and never fabricates missing body',async()=>{
+ const raw=validGenerated();delete raw.gateLine;
+ await assert.rejects(()=>generationSupport.completeMetadata(raw,async()=>({gateLine:'이어 읽기',beforeContent:'바뀐 본문'})),e=>e.code==='RESULT_SCHEMA_INVALID'&&e.details.extra.includes('beforeContent'));
+ delete raw.beforeContent;let calls=0;const out=await generationSupport.completeMetadata(raw,async()=>{calls++;return {gateLine:'x'};});
+ assert.equal(calls,0);assert.ok(!out.result.beforeContent);
+});
+
+test('strict provider schema removes unsupported constraints without weakening local contracts',()=>{
+ const schema=generationSupport.strictSchema(studioCore.schemas.generate);
+ assert.equal(schema.additionalProperties,false);assert.equal(schema.required.length,13);
+ assert.equal(schema.properties.titles.minItems,undefined);assert.equal(schema.properties.titles.maxItems,undefined);
+ assert.match(schema.properties.titles.description,/minItems: 3/);
+ assert.equal(studioCore.schemas.generate.properties.titles.minItems,3);
+ const raw=validGenerated();raw.titles=['one'];assert.throws(()=>studioCore.validateResult('generate',raw,studioCore.cleanDraft({})));
+ assert.equal(generationSupport.strictSchema(studioCore.schemas.split).properties.cutIndex.minimum,undefined);
+ assert.equal(generationSupport.strictSchema(studioCore.schemas.review).properties.issues.items.additionalProperties,false);
+});
+
+function edgeHarness(provider){
+ let serve;const updates=[];
+ const query=()=>{const q={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert'])q[method]=()=>q;q.update=value=>{updates.push(structuredClone(value));return q;};return q;};
+ const context=vm.createContext({...studioCore,...generationSupport,...socialRepair,...preservation,Response,Request,URL,TextEncoder,TextDecoder,AbortSignal,crypto:crypto.webcrypto,console,Error,fetch:provider,createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ vm.runInContext(stripTypeScriptTypes(fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'')),context);
+ vm.runInContext(`credentials=async()=>({key:'test-key',model:'test-model'});getWritingPrompt=async()=>({prompt:'',revision:1});putArtifact=async()=>{};`,context);
+ return {context,updates,serve};
+}
+
+test('real generation pipeline repairs the missing field and records request IDs, stop reasons and stages',async()=>{
+ let calls=0;const candidate=validGenerated();delete candidate.gateLine;
+ const {context,updates}=edgeHarness(async(url,options)=>{
+  const body=JSON.parse(options.body);assert.equal(body.tools[0].strict,true);assert.equal(body.tools[0].input_schema.additionalProperties,false);
+  calls++;return Response.json({id:'msg-'+calls,stop_reason:'tool_use',usage:{input_tokens:5,output_tokens:6},content:[{type:'tool_use',name:'deliver_result',input:calls===1?candidate:{gateLine:'쪽지에는 뭐라고 적혀 있었을까.'}}]},{headers:{'request-id':'req-'+calls}});
+ });
+ const out=await vm.runInContext(`runJob({jobId:'pipeline-job',draftId:'pipeline-draft',action:'generate',data:{sourceText:'여행 중 잃어버린 인형. 공식 계정이 새 인형과 쪽지를 보내왔다.'}})`,context);
+ assert.equal(calls,2);assert.equal(out.result.beforeContent,candidate.beforeContent);assert.equal(out.result.afterContent,candidate.afterContent);
+ assert.equal(out.diagnostics.stage,'completed');assert.equal(out.diagnostics.repairs[0].fields[0],'gateLine');assert.equal(out.diagnostics.providerCalls[0].fields.missing[0],'gateLine');assert.equal(out.diagnostics.providerCalls[1].requestId,'req-2');assert.equal(out.diagnostics.providerCalls[0].stopReason,'tool_use');
+ assert.ok(updates.some(v=>v.status==='done'));assert.ok(!updates.some(v=>Object.hasOwn(v,'data')));
+});
+
+test('provider failure is saved with exact HTTP error and redacted diagnostics',async()=>{
+ const {context,updates}=edgeHarness(async()=>Response.json({error:{type:'authentication_error',message:'Invalid key sk-ant-private-123'}},{status:401,headers:{'request-id':'req-failed'}}));
+ await assert.rejects(()=>vm.runInContext(`runJob({jobId:'failed-job',draftId:'failed-draft',action:'generate',data:{sourceText:'소재 내용'}})`,context),error=>error.diagnostics.error.code==='PROVIDER_HTTP_401');
+ const saved=updates.find(v=>v.status==='failed').result.diagnostics;
+ assert.equal(saved.error.provider.requestId,'req-failed');assert.equal(saved.stage,'generate');assert.ok(!JSON.stringify(saved).includes('sk-ant-private'));assert.match(saved.error.provider.message,/REDACTED/);
+});
+
+test('worker passes diagnostics on failed streams and exposes history diagnostics',async()=>{
+ const saved=globalThis.fetch;const diagnostics={jobId:'job-1',stage:'validate',error:{code:'RESULT_SCHEMA_INVALID',fields:{missing:['gateLine']}}};
+ try{
+  globalThis.fetch=async(url,options)=>{const payload=JSON.parse(options.body);if(payload.action==='job_diagnostics')return Response.json({ok:true,diagnostics});return Response.json({ok:false,error:'누락: gateLine',diagnostics},{status:502});};
+  const r=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',body:JSON.stringify({jobId:'job-1',action:'generate',data:{}})}),{});
+  const failed=(await r.text()).trim().split('\n').map(JSON.parse).find(e=>e.type==='failed');assert.deepEqual(failed.diagnostics,diagnostics);
+  const history=await worker.fetch(new Request('https://ssulpan.test/api/jobs/job-1/diagnostics'),{});assert.deepEqual((await history.json()).diagnostics,diagnostics);
  }finally{globalThis.fetch=saved;}
 });

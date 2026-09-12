@@ -7,8 +7,15 @@
   let promptState={prompt:'',revision:0},promptDirty=false,promptSaving=false;
   const message=text=>{$('status').textContent=text;};
   const work=text=>{$('work-status').textContent=text;};
+  function showDiagnostics(value,jobId,open=false){
+    const diagnostic={...value,jobId:value?.jobId||jobId};
+    const panel=$('job-diagnostics');panel.hidden=false;panel.open=open;
+    const failed=diagnostic.error,missing=failed?.fields?.missing||[];
+    $('diagnostics-summary').textContent=[diagnostic.jobId?'작업 번호: '+diagnostic.jobId:'',failed?'오류 코드: '+failed.code:'상태: '+(diagnostic.status||diagnostic.stage||'확인 중'),diagnostic.stage?'단계: '+diagnostic.stage:'',missing.length?'누락 항목: '+missing.join(', '):''].filter(Boolean).join(' · ');
+    $('diagnostics-json').textContent=JSON.stringify(diagnostic,null,2);
+  }
   const empty=()=>({title:'',category:'일상',teaser:'',beforeContent:'',afterContent:'',hook:'',coverDetail:'',caption:'',hashtags:'#썰판 #썰',sourceText:'',sourceUrl:'',storyBible:'',notes:'',gateLine:'',rewriteInstruction:'',titles:[],fadeHeight:180,imageIds:[],options:{tone:'친구에게 말하듯',tension:'높게',dialogue:'보통',lengthMode:'source'}});
-  async function api(path,options={}){const response=await fetch(path,{credentials:'same-origin',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});const data=await response.json().catch(()=>({error:'응답을 읽지 못했어요. 입력한 원고를 내보내 보관해 주세요.'}));if(!response.ok){const e=new Error(data.error||'요청을 처리하지 못했어요.');e.status=response.status;throw e;}return data;}
+  async function api(path,options={}){const response=await fetch(path,{credentials:'same-origin',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});const data=await response.json().catch(()=>({error:'응답을 읽지 못했어요. 입력한 원고를 내보내 보관해 주세요.'}));if(!response.ok){const e=new Error(data.error||'요청을 처리하지 못했어요.');e.status=response.status;e.diagnostics=data.diagnostics;throw e;}return data;}
   function collect(){const data={...current?.data};for(const [key,element] of Object.entries(fields))data[key]=$(element).value;data.fadeHeight=Number($('fade-height').value);data.imageIds=[...(current?.data.imageIds||[])];const previousOptions=current?.data?.options||{};
     const lengthRequest=typeof previousOptions.lengthRequest==='string'?previousOptions.lengthRequest.replace(/\r\n?/g,'\n').trim():'';
     data.options={tone:$('tone').value,tension:$('tension').value,dialogue:$('dialogue').value,lengthMode:'source'};
@@ -86,33 +93,40 @@
     }catch(e){message(e.message);}finally{loading=false;$('new-story').disabled=false;}
   }
   function needClaude(){if(connected)return true;$('connection-panel').open=true;$('connection-panel').scrollIntoView({block:'start',behavior:'smooth'});$('claude-key').focus();work('클로드 API 키를 연결한 뒤 사용할 수 있어요.');return false;}
-  async function run(action,target){
+  async function run(action,target,recoverJobId){
     if(!current||busy||loading||uploading||!needClaude())return;
     const selected=action==='rewrite'?$(target+'-content'):null;const scope=selected&&selected.selectionEnd>selected.selectionStart?{start:selected.selectionStart,end:selected.selectionEnd}:undefined;
-    busy=true;
+    busy=true;const jobId=crypto.randomUUID();$('job-diagnostics').hidden=true;
     const aiButtons=[$('generate-story'),$('generate-prompt'),$('save-prompt'),$('reload-prompt'),$('generate-social'),$('extract-images'),$('review-story'),$('split-story'),$('new-story'),$('source-images'),...document.querySelectorAll('[data-rewrite]')];
     aiButtons.forEach(b=>b.disabled=true);
     try{
       if(promptDirty&&['generate','rewrite','social','prompt'].includes(action))await savePrompt();
       await save();const did=current.id;
       work(labels[action]+' 중… 결과는 작업 기록에도 남습니다.');
-      const response=await fetch('/api/jobs',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:crypto.randomUUID(),draftId:did,action,target,scope,data:collect(),instruction:$('rewrite-instruction').value})});
-      if(!response.ok){const e=await response.json();throw new Error(e.error||'클로드 작업을 시작하지 못했어요.');}
+      const response=await fetch('/api/jobs',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId,draftId:did,action,target,scope,recoverJobId,data:collect(),instruction:$('rewrite-instruction').value})});
+      if(!response.ok){const e=await response.json();throw Object.assign(new Error(e.error||'클로드 작업을 시작하지 못했어요.'),{diagnostics:e.diagnostics});}
       const reader=response.body.getReader(),decoder=new TextDecoder();let pending='',done=false;
       function consume(line){
         if(!line.trim())return;const event=JSON.parse(line);
-        if(event.type==='failed')throw new Error(event.message);
-        if(event.type==='done'){done=true;if(current?.id===did)showProposal(action,event.result,target,did,event);work(labels[action]+' 완료 · 클로드 '+event.calls+'회 호출. 결과를 확인해 주세요.');}
+        if(event.type==='failed')throw Object.assign(new Error(event.message),{diagnostics:event.diagnostics});
+        if(event.type==='done'){done=true;if(event.diagnostics)showDiagnostics(event.diagnostics,event.jobId);if(current?.id===did)showProposal(action,event.result,target,did,event);work(labels[action]+' 완료 · 클로드 '+event.calls+'회 호출. 결과를 확인해 주세요.');}
         else if(event.type==='progress')work(event.message);
       }
       for(;;){const part=await reader.read();if(part.done)break;pending+=decoder.decode(part.value,{stream:true});let n;while((n=pending.indexOf('\n'))>=0){const line=pending.slice(0,n);pending=pending.slice(n+1);consume(line);}}
       pending+=decoder.decode();if(pending.trim())consume(pending);if(!done)throw new Error('연결이 끊겼어요. 작업 기록에서 결과를 확인해 주세요.');
-    }catch(e){work(e.message);}finally{busy=false;aiButtons.forEach(b=>b.disabled=false);await refreshPrompt().catch(e=>{$('prompt-status').textContent=e.message;});}
+    }catch(e){
+      work(e.message);
+      let diagnostic=e.diagnostics||{stage:'browser_transport',error:{code:'CLIENT_CONNECTION',message:e.message},note:'작업 기록에서 서버 상태를 확인해 주세요.'};
+      try{const saved=await api('/api/jobs/'+jobId+'/diagnostics');if(saved.diagnostics)diagnostic=saved.diagnostics;}catch{}
+      showDiagnostics(diagnostic,jobId,true);
+      if(diagnostic.status==='done')work('서버 작업은 완료됐어요. 이전 원고·작업 기록에서 결과를 열어 주세요.');
+    }finally{busy=false;aiButtons.forEach(b=>b.disabled=false);await refreshPrompt().catch(e=>{$('prompt-status').textContent=e.message;});}
   }
-  async function history(){const historyId=current.id;const [v,j]=await Promise.all([api('/api/drafts/'+historyId+'/versions'),api('/api/jobs')]);if(current?.id!==historyId)return;for(const [element,rows,kind] of [[$('version-list'),v.versions,'version'],[$('job-list'),j.jobs,'job']]){element.replaceChildren();if(!rows.length){const p=document.createElement('p');p.className='micro';p.textContent='아직 기록이 없어요.';element.append(p);}rows.forEach(r=>{const row=document.createElement('div');row.className='history-row';const p=document.createElement('p');p.textContent=new Date(r.created_at).toLocaleString('ko-KR')+' · '+(kind==='version'?r.reason:labels[r.action]+' · '+({running:'진행 중',done:'완료',failed:'실패',interrupted:'연결 종료 — 재실행 가능'}[r.status]||r.status))+(r.error?' · '+r.error:'');row.append(p);if(kind==='job'&&r.status==='failed'){const recover=document.createElement('button');recover.className='btn light';recover.textContent='보관된 원본 결과';recover.onclick=guard(async()=>{const raw=await api('/api/jobs/'+r.id+'/candidate');await copy(JSON.stringify(raw,null,2));});row.append(recover);}if(kind==='version'||r.status==='done'){const b=document.createElement('button');b.className='btn light';b.textContent='결과 보기';b.onclick=async()=>{if(kind==='version'&&current.id!==historyId)await choose(historyId);if(kind==='version'&&current.id!==historyId)return;if(kind==='job'&&current.id!==r.draft_id)await choose(r.draft_id);if(kind==='job'&&current.id!==r.draft_id)return;showProposal(kind==='version'?'version':r.action,kind==='version'?r.data:r.result.result,r.result?.target,kind==='version'?historyId:r.draft_id,r.result||{});};row.append(b);}element.append(row);});}}
+  async function history(){const historyId=current.id;const [v,j]=await Promise.all([api('/api/drafts/'+historyId+'/versions'),api('/api/jobs')]);if(current?.id!==historyId)return;for(const [element,rows,kind] of [[$('version-list'),v.versions,'version'],[$('job-list'),j.jobs,'job']]){element.replaceChildren();if(!rows.length){const p=document.createElement('p');p.className='micro';p.textContent='아직 기록이 없어요.';element.append(p);}rows.forEach(r=>{const row=document.createElement('div');row.className='history-row';const p=document.createElement('p');p.textContent=new Date(r.created_at).toLocaleString('ko-KR')+' · '+(kind==='version'?r.reason:labels[r.action]+' · '+({running:'진행 중',done:'완료',failed:'실패',interrupted:'연결 종료 — 재실행 가능'}[r.status]||r.status))+(r.error?' · '+r.error:'');row.append(p);if(kind==='job'){const diag=document.createElement('button');diag.className='btn light';diag.textContent='진단 보기';diag.onclick=guard(async()=>{const out=await api('/api/jobs/'+r.id+'/diagnostics');showDiagnostics(out.diagnostics,r.id,true);$('job-diagnostics').scrollIntoView({behavior:'smooth',block:'center'});});row.append(diag);}if(kind==='job'&&r.status==='failed'){const recover=document.createElement('button');recover.className='btn light';recover.textContent='보관된 원본 결과';recover.onclick=guard(async()=>{const raw=await api('/api/jobs/'+r.id+'/candidate');await copy(JSON.stringify(raw,null,2));});row.append(recover);if(r.action==='generate'){const fix=document.createElement('button');fix.className='btn light';fix.textContent='빠진 부가 항목 복구';fix.onclick=guard(async()=>{if(busy||loading||uploading)return;if(current.id!==r.draft_id)await choose(r.draft_id);if(current.id===r.draft_id)await run('generate',undefined,r.id);});row.append(fix);}}if(kind==='version'||r.status==='done'){const b=document.createElement('button');b.className='btn light';b.textContent='결과 보기';b.onclick=async()=>{if(kind==='version'&&current.id!==historyId)await choose(historyId);if(kind==='version'&&current.id!==historyId)return;if(kind==='job'&&current.id!==r.draft_id)await choose(r.draft_id);if(kind==='job'&&current.id!==r.draft_id)return;showProposal(kind==='version'?'version':r.action,kind==='version'?r.data:r.result.result,r.result?.target,kind==='version'?historyId:r.draft_id,r.result||{});};row.append(b);}element.append(row);});}}
   async function copy(text){try{await navigator.clipboard.writeText(text);message('복사했어요.');}catch{let el=$('copy-fallback');if(!el){el=document.createElement('textarea');el.id='copy-fallback';el.setAttribute('aria-label','직접 복사할 원고');$('status').after(el);}el.value=text;el.focus();el.select();message('아래 원고를 길게 눌러 복사해 주세요.');}}
   const guard=fn=>async(...args)=>{try{await fn(...args);}catch(e){message(e.message);}};
   for(const element of [...Object.values(fields),'tone','tension','dialogue','fade-height'])$(element).addEventListener('input',changed);
+  $('copy-diagnostics').onclick=()=>copy($('diagnostics-json').textContent);
   $('new-story').disabled=true;
   $('new-story').onclick=guard(async()=>{
     if(busy||loading||uploading)throw new Error('진행 중인 작업이 끝난 뒤 새 원고를 열어 주세요.');

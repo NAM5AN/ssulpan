@@ -1,3 +1,4 @@
+import {fieldReport,contractError} from './generation-support.mjs';
 import masterPrompt from './master-prompt.json' with {type:'json'};
 export {masterPrompt};
 export class HttpError extends Error { constructor(status,message){super(message);this.status=status;} }
@@ -34,9 +35,9 @@ export function legacy(s){const c=s.cutAfter||Math.min(5,s.body.length-2);return
 export function publicPost(d){const out={};for(const k of ['title','category','teaser','beforeContent','afterContent','hook','coverDetail','caption','hashtags','fadeHeight','gateLine'])out[k]=d[k];return out;}
 export function assertPublish(d){if(!d.title.trim()||!d.beforeContent.trim()||!d.afterContent.trim())throw new HttpError(400,'제목과 광고 전·후 본문을 모두 작성해 주세요.');}
 export function parseToolOutput(data){
-  if(['max_tokens','model_context_window_exceeded'].includes(data.stop_reason))throw new HttpError(502,'클로드의 한 번 응답 한도에 도달해 결과가 완성되지 않았어요. 소재와 기존 원고는 보존했습니다.');
+  if(['max_tokens','model_context_window_exceeded'].includes(data.stop_reason))throw Object.assign(new HttpError(502,'클로드의 한 번 응답 한도에 도달해 결과가 완성되지 않았어요. 소재와 기존 원고는 보존했습니다.'),{code:'INCOMPLETE_OUTPUT'});
   const tool=data.content?.find(c=>c.type==='tool_use'&&c.name==='deliver_result');
-  if(data.stop_reason!=='tool_use'||data.content.filter(c=>c.type==='tool_use').length!==1||!tool||typeof tool.input!=='object'||!tool.input||Array.isArray(tool.input))throw new HttpError(502,'클로드가 완성된 결과를 반환하지 않았어요. 원고를 보존했으니 다시 시도해 주세요.');
+  if(data.stop_reason!=='tool_use'||(data.content||[]).filter(c=>c.type==='tool_use').length!==1||!tool||typeof tool.input!=='object'||!tool.input||Array.isArray(tool.input))throw Object.assign(new HttpError(502,'클로드가 완성된 결과를 반환하지 않았어요. 원고를 보존했으니 다시 시도해 주세요.'),{code:'INVALID_TOOL_RESULT'});
   return tool.input;
 }
 const str={type:'string'};
@@ -76,7 +77,7 @@ export function promptFor(action,d,target,instruction,writingPrompt=''){
   return {system:common+(['generate','rewrite','review','split','social'].includes(action)?'\n\n'+bodyPolicy:''),text:(['generate','rewrite','social'].includes(action)?'기본 작성 지침:\n'+masterPrompt+'\n\n':'')+(writingPrompt&&writingPrompt!==masterPrompt?'저장된 작성 지침:\n'+writingPrompt+'\n\n':'')+task+'\n\n참고 데이터:\n'+JSON.stringify(context),schema:schemas[action]};
 }
 export function validateResult(action,r,d){
-  const expected=schemas[action]?.required;if(!r||Array.isArray(r)||typeof r!=='object'||!expected||Object.keys(r).some(k=>!expected.includes(k))||expected.some(k=>!(k in r)))throw new HttpError(502,'클로드 결과 필드가 완성되지 않았어요. 기존 원고는 유지했습니다.');
+  const report=fieldReport(schemas[action],r);if(!schemas[action]||report.missing.length||report.extra.length||report.invalid.length)throw contractError(report);
   if(action==='prompt'){
     if(typeof r.prompt!=='string'||r.prompt.trim().length<100||r.prompt.length>16000)throw new HttpError(502,'클로드가 완성된 작성 지침을 반환하지 않았어요. 기존 지침은 유지했습니다.');
     return {prompt:r.prompt.trim()};

@@ -1,3 +1,4 @@
+import {GENERATION_RELEASE,strictSchema,completeMetadata,fieldReport,failureInfo,safeMessage} from "./generation-support.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { socialIssues, buildSocialRepairRequest, applySocialRepair, SOCIAL_FIELDS } from "./social-repair.mjs";
 import { createSourceBaseline, inspectSourcePreservation } from "./source-preservation.mjs";
@@ -13,6 +14,7 @@ import {
   validateResult,
   string,
   masterPrompt,
+  schemas,
 } from "./core.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -433,9 +435,22 @@ async function loadImages(ids: string[]) {
   return blocks;
 }
 
-async function claudeRequest(cred: any, action: string, d: any, target: string, instruction: string, prompt = "", images: any[] = [], override: any = null) {
+async function checkpoint(trace: any, stage: string) {
+  if (!trace) return;
+  trace.stage = stage;
+  trace.events.push({ stage, at: new Date().toISOString() });
+  try {
+    const {error} = await admin.from("ssul_jobs").update({result:{diagnostics:trace}}).eq("id",trace.jobId).eq("owner_id",OWNER_ID);
+    if(error)throw error;
+  }catch{console.error("diagnostic_checkpoint_failed",{jobId:trace.jobId,stage});}
+}
+
+async function claudeRequest(cred: any, action: string, d: any, target: string, instruction: string, prompt = "", images: any[] = [], override: any = null, trace: any = null) {
   const request = override || promptFor(action, d, target, instruction, prompt);
   const content = [...images, { type: "text", text: request.text }];
+  const call: any = {action,model:cred.model,startedAt:new Date().toISOString(),status:"running",strict:true};
+  if(trace)trace.providerCalls.push(call);
+  const started=Date.now();
   let response: Response;
   try {
     response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -446,17 +461,31 @@ async function claudeRequest(cred: any, action: string, d: any, target: string, 
         max_tokens: action === "generate" ? 16000 : action === "extract" ? 10000 : action === "prompt" ? 6000 : 8000,
         system: request.system,
         messages: [{ role: "user", content }],
-        tools: [{ name: "deliver_result", description: "편집 결과를 정해진 형식으로 반환합니다.", input_schema: request.schema }],
+        tools: [{ name: "deliver_result", description: "편집 결과를 정해진 형식으로 반환합니다.", strict:true, input_schema: strictSchema(request.schema) }],
         tool_choice: { type: "tool", name: "deliver_result" },
       }),
       signal: AbortSignal.timeout(150000),
     });
-  } catch {
-    fail(504, "클로드 응답을 기다리다 시간이 지났어요. 입력 원고는 보존했습니다. 다시 시도하면 새 요청으로 처리됩니다.");
+  } catch (cause) {
+    call.status="failed";call.elapsedMs=Date.now()-started;
+    throw Object.assign(new HttpError(504,"클로드 응답을 받지 못했어요. 입력 원고는 보존했습니다."),{code:(cause as any)?.name==="TimeoutError"?"PROVIDER_TIMEOUT":"PROVIDER_NETWORK",provider:{elapsedMs:call.elapsedMs}});
   }
-  if (!response.ok) throw upstreamError(response.status);
-  const output = await response.json();
-  return { result: parseToolOutput(output), usage: output.usage, model: cred.model };
+  call.elapsedMs=Date.now()-started;call.httpStatus=response.status;call.requestId=response.headers.get("request-id")||response.headers.get("x-request-id");
+  const rawText=await response.text();
+  let output:any;
+  try{output=JSON.parse(rawText);}catch{call.status="failed";throw Object.assign(new HttpError(502,"클로드 서버 응답을 JSON으로 읽지 못했어요."),{code:"PROVIDER_INVALID_JSON",provider:{httpStatus:response.status,requestId:call.requestId}});}
+  if (!response.ok) {
+    call.status="failed";call.errorType=output?.error?.type;
+    throw Object.assign(upstreamError(response.status),{code:"PROVIDER_HTTP_"+response.status,provider:{httpStatus:response.status,requestId:call.requestId,type:output?.error?.type,message:safeMessage(output?.error?.message)}});
+  }
+  call.stopReason=output.stop_reason;call.usage=output.usage;call.responseId=output.id;
+  call.fields=fieldReport(request.schema,output.content?.find((c:any)=>c.type==="tool_use"&&c.name==="deliver_result")?.input);
+  if(trace){
+    const prefix=`private/${await hashText(OWNER_ID)}/responses/${trace.jobId}/${trace.providerCalls.length}.json`;
+    try{await putArtifact(prefix,JSON.stringify(output));call.rawSaved=true;}catch{call.rawSaved=false;}
+  }
+  try{const result=parseToolOutput(output);call.status="done";return {result,usage:output.usage,model:cred.model};}
+  catch(error){call.status="failed";throw error;}
 }
 
 async function hashText(text: string) {
@@ -464,31 +493,33 @@ async function hashText(text: string) {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-async function callClaude(action: string, initialDraft: any, target: string, instruction: string, jobId: string, scope: any = null) {
+async function callClaude(action: string, initialDraft: any, target: string, instruction: string, jobId: string, scope: any = null, trace: any = null, recovery: any = null) {
   const cred = await credentials();
   if (!cred.key) fail(428, "제작실 상단의 클로드 연결에서 API 키를 등록해 주세요.");
   let d = initialDraft;
-  const baseData = JSON.stringify(Object.fromEntries(await Promise.all(
+  const baseData = recovery?.baseData || JSON.stringify(Object.fromEntries(await Promise.all(
     Object.entries(d).map(async ([key, value]) => [key, await hashText(JSON.stringify(value))]),
   )));
   const saved = await getWritingPrompt();
+  if(trace){trace.promptRevision=saved.revision;trace.model=cred.model;await checkpoint(trace,"prepare");}
   let calls = 0;
   const usage: any[] = [];
   const invoke = async (requestedAction: string, data = d, images: any[] = [], override: any = null) => {
     calls += 1;
-    const output = await claudeRequest(cred, requestedAction, data, target, instruction, saved.prompt, images, override);
+    await checkpoint(trace,requestedAction);
+    const output = await claudeRequest(cred, requestedAction, data, target, instruction, saved.prompt, images, override, trace);
     usage.push(output.usage);
     return output.result;
   };
   const ownerPrefix = `private/${await hashText(OWNER_ID)}/`;
   if (d.sourceText) await putArtifact(`${ownerPrefix}source/${await hashText(d.sourceText)}`, d.sourceText, "text/plain");
   let extracted: any = null;
-  if (["generate", "extract"].includes(action) && d.imageIds.length) {
+  if (!recovery && ["generate", "extract"].includes(action) && d.imageIds.length) {
     const images = await loadImages(d.imageIds);
     const imageKey = await hashText(JSON.stringify(d.imageIds));
     const cacheKey = `${ownerPrefix}ocr/${imageKey}`;
     const cached = await getArtifact(cacheKey);
-    if (cached) extracted = JSON.parse(cached);
+    if (cached) {extracted = JSON.parse(cached);if(trace)trace.ocrCacheHit=true;}
     else {
       extracted = validateResult("extract", await invoke("extract", d, images), d);
       await putArtifact(cacheKey, JSON.stringify(extracted));
@@ -508,7 +539,7 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
       override = promptFor(action, d, target, instruction, saved.prompt);
       override.text += `\n\n수정 범위(문자 오프셋, 끝 제외): ${JSON.stringify(scope)}\n선택 구간 밖의 앞·뒤 문자열은 공백과 줄바꿈까지 그대로 복사한다. text에는 대상 본문 구간 전체를 반환한다.`;
     }
-    let raw = await invoke(action, d, [], override);
+    let raw = recovery ? recovery.result : await invoke(action, d, [], override);
     await putArtifact(`${ownerPrefix}candidate/${jobId}`, JSON.stringify({
       action,
       result: raw,
@@ -516,6 +547,11 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
       sourceText: d.sourceText,
       sourceImageKey: d.sourceImageKey,
     }));
+    if(action==="generate"){
+      const completed=await completeMetadata(raw,(request:any)=>invoke("metadata_repair",d,[],request));
+      raw=completed.result;
+      if(trace&&completed.repaired.length)trace.repairs.push({type:"metadata",fields:completed.repaired});
+    }
     if (["generate", "social"].includes(action)) {
       let candidate = action === "generate"
         ? { ...d, ...raw }
@@ -526,26 +562,29 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
           const repair = await buildSocialRepairRequest(candidate, { fields: invalidFields, revision: 0 });
           const fixed = await invoke("social", d, [], repair.providerRequest);
           candidate = (await applySocialRepair(candidate, fixed, repair, { revision: 0 })).candidate;
-        } catch {
-          fail(502, "부가 문구 보정이 완료되지 않았어요. 생성한 본문은 작업 기록의 원본 결과로 보관했습니다.");
+          if(trace)trace.repairs.push({type:"social",fields:invalidFields});
+        } catch(error) {
+          throw Object.assign(new HttpError(502,"부가 문구 보정이 완료되지 않았어요. 생성한 본문은 보관했습니다."),{code:"SOCIAL_REPAIR_FAILED",details:{fields:invalidFields,cause:failureInfo(error,"social")}});
         }
       }
       raw = action === "generate"
         ? { ...raw, ...Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, candidate[key]])) }
         : Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, candidate[key]]));
     }
+    await checkpoint(trace,"validate");
     result = validateResult(action, raw, d);
     if (action === "rewrite" && scope) {
       const text = d[target === "before" ? "beforeContent" : "afterContent"];
       const prefix = text.slice(0, scope.start);
       const suffix = text.slice(scope.end);
       if (result.text.length < prefix.length + suffix.length || !result.text.startsWith(prefix) || !result.text.endsWith(suffix)) {
-        fail(502, "선택한 범위 밖의 문장이 바뀌어 반영하지 않았어요. 기존 원고는 유지했습니다.");
+        throw Object.assign(new HttpError(502,"선택한 범위 밖의 문장이 바뀌어 반영하지 않았어요. 기존 원고는 유지했습니다."),{code:"REWRITE_OUTSIDE_SCOPE"});
       }
     }
     if (action === "generate") result = { ...result, sourceText: d.sourceText, sourceImageKey: d.sourceImageKey };
   }
   if (["generate", "review"].includes(action) && d.sourceText) {
+    await checkpoint(trace,"preservation");
     const baseline = await createSourceBaseline({
       sourceText: d.sourceText,
       complete: !extracted?.uncertain && !d.sourceText.includes("[판독 불가]"),
@@ -565,7 +604,17 @@ async function runJob(input: any) {
   const jobId = id(String(input.jobId || crypto.randomUUID()));
   const draftId = id(String(input.draftId || "new"));
   const action = String(input.action === "job_run" ? input.jobAction || "" : input.action || "");
-  const d = cleanDraft(input.data);
+  let d = cleanDraft(input.data);
+  let recovery:any=null;
+  if(input.recoverJobId){
+    if(action!=="generate")fail(400,"전체 생성 결과만 복구할 수 있어요.");
+    const old=await jobCandidate(id(String(input.recoverJobId)));
+    const {data:oldJob,error}=await admin.from("ssul_jobs").select("draft_id,action").eq("id",input.recoverJobId).eq("owner_id",OWNER_ID).maybeSingle();
+    if(error)throw error;
+    if(!oldJob||String(oldJob.draft_id)!==draftId||old.action!=="generate")fail(400,"같은 원고의 전체 생성 결과를 선택해 주세요.");
+    recovery=old;
+    d=cleanDraft({...d,sourceText:old.sourceText||d.sourceText,sourceImageKey:old.sourceImageKey||d.sourceImageKey});
+  }
   const target = action === "rewrite" ? input.target : undefined;
   if (action === "rewrite" && !["before", "after"].includes(target)) fail(400, "수정할 구간을 지정해 주세요.");
   if (!["generate", "rewrite", "extract", "social", "review", "split", "prompt"].includes(action)) fail(400, "작업을 확인해 주세요.");
@@ -611,6 +660,7 @@ async function runJob(input: any) {
   if ((running || []).length) fail(409, "진행 중인 클로드 작업이 있어요. 작업 기록에서 확인해 주세요.");
   const instruction = string(input.instruction, 2000);
   const model = cred.model;
+  const trace:any={version:1,release:GENERATION_RELEASE,jobId,draftId,action,model,stage:"queued",startedAt:new Date().toISOString(),events:[],providerCalls:[],repairs:[],...(input.recoverJobId?{recoveredFrom:input.recoverJobId}:{})};
   const { error: insertError } = await admin.from("ssul_jobs").insert({
     id: jobId,
     owner_id: OWNER_ID,
@@ -619,12 +669,14 @@ async function runJob(input: any) {
     provider: "claude",
     model,
     status: "running",
+    result: {diagnostics:trace},
     input: { data: d, target, instruction, scope },
   });
   if (insertError) throw insertError;
   try {
-    const output = await callClaude(action, d, target, instruction, jobId, scope);
-    const envelope = { ...output, target };
+    const output = await callClaude(action, d, target, instruction, jobId, scope, trace, recovery);
+    trace.stage="completed";trace.finishedAt=new Date().toISOString();trace.elapsedMs=Date.now()-Date.parse(trace.startedAt);
+    const envelope = { ...output, target, diagnostics:trace };
     const { error: updateError } = await admin.from("ssul_jobs").update({
       status: "done",
       result: envelope,
@@ -635,11 +687,23 @@ async function runJob(input: any) {
     if (updateError) throw updateError;
     return { id: jobId, ...envelope };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await admin.from("ssul_jobs").update({ status: "failed", error: message, finished_at: new Date().toISOString() })
+    const message = safeMessage(error instanceof Error ? error.message : String(error));
+    trace.error=failureInfo(error,trace.stage);trace.finishedAt=new Date().toISOString();trace.elapsedMs=Date.now()-Date.parse(trace.startedAt);
+    (error as any).diagnostics=trace;
+    await admin.from("ssul_jobs").update({ status: "failed", error: message, result:{diagnostics:trace}, usage:trace.providerCalls.map((call:any)=>call.usage).filter(Boolean), finished_at: new Date().toISOString() })
       .eq("id", jobId).eq("owner_id", OWNER_ID);
     throw error;
   }
+}
+
+async function jobDiagnostics(jobId:string){
+  id(jobId);
+  const {data:job,error}=await admin.from("ssul_jobs").select("id,draft_id,action,status,error,model,result,created_at,finished_at").eq("id",jobId).eq("owner_id",OWNER_ID).maybeSingle();
+  if(error)throw error;if(!job)fail(404,"작업이 없어요.");
+  if(job.result?.diagnostics)return {diagnostics:{...job.result.diagnostics,status:job.status}};
+  let report:any=null;
+  try{const candidate=await jobCandidate(jobId);report=fieldReport(schemas[job.action],candidate.result);}catch{}
+  return {diagnostics:{version:1,release:"legacy",jobId:job.id,draftId:job.draft_id,action:job.action,status:job.status,model:job.model,startedAt:job.created_at,finishedAt:job.finished_at,stage:report?"validate":"unknown",error:job.error?{code:report?.missing.length||report?.extra.length||report?.invalid.length?"RESULT_SCHEMA_INVALID":"LEGACY_ERROR",message:safeMessage(job.error),fields:report}:null,providerCalls:[],note:"이전 버전은 제공사 요청 ID·응답 종료 사유를 기록하지 않았습니다."}};
 }
 
 async function jobCandidate(jobId: string) {
@@ -728,6 +792,7 @@ Deno.serve(async (request) => {
     else if (action === "publish") result = await publishDraft(String(body.id || ""), Number(body.revision));
     else if (action === "jobs_list") result = await listJobs();
     else if (action === "job_run" || ["generate", "rewrite", "extract", "social", "review", "split", "prompt"].includes(action)) result = await runJob(body);
+    else if (action === "job_diagnostics") result = await jobDiagnostics(String(body.id||""));
     else if (action === "job_candidate") result = await jobCandidate(String(body.id || ""));
     else if (action === "image_upload") result = await uploadImage(body);
     else if (action === "image_url") result = await imageUrl(String(body.id || ""));
@@ -737,6 +802,6 @@ Deno.serve(async (request) => {
   } catch (error) {
     const status = error instanceof HttpError ? error.status : Number((error as any)?.status) || 500;
     if (!(error instanceof HttpError)) console.error("studio_request_failed", error);
-    return json({ ok: false, error: error instanceof Error ? error.message : String(error) }, status);
+    return json({ ok: false, error: safeMessage(error instanceof Error ? error.message : String(error)), diagnostics:(error as any)?.diagnostics||{release:GENERATION_RELEASE,stage:"request_validation",error:failureInfo(error,"request_validation")} }, status);
   }
 });
