@@ -1,5 +1,5 @@
 // Response contracts and diagnostics shared by the server and regression tests.
-export const GENERATION_RELEASE='2026-09-13-colloquial-style-2';
+export const GENERATION_RELEASE='2026-09-13-report-only-validation-1';
 const toolSerializationPattern = /<\/?(?:storyBible|gateLine|beforeContent|afterContent|title|titles|category|teaser|hook|coverDetail|caption|hashtags|imageText)\s*>|<parameter\s+name\s*=/iu;
 export function hasToolSerializationArtifact(value){return typeof value==='string'&&toolSerializationPattern.test(value);}
 export function strictSchema(schema){

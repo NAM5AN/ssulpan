@@ -1,5 +1,19 @@
 # Claude 생성 오류 진단 및 복구
 
+## 2026-09-13 검사 경고 통과 정책
+
+Claude가 `deliver_result` 객체를 하나라도 반환하면 이후 서버 검사는 결과를 폐기하거나 작업을 실패시키지 않는다. 형식 검사, 필수 부가 항목 보정, 소셜 문구 보정, 부분 수정 범위, 문체, 원문 보존 검사는 각각 `diagnostics.inspections[]`에 `passed` 또는 `review`로 기록한다. 확인이 필요한 내용은 `diagnostics.warnings[]`에도 코드·단계·메시지를 남기고 작업 자체는 `status=done`, `outcome=completed_with_warnings`로 저장한다.
+
+형식 검사를 통과하지 못한 객체는 `bestEffortResult`로 화면에 표시 가능한 13개 필드 형태로 바꾼다. 문자열로 실제 반환된 내용은 그대로 보이고, 반환되지 않았거나 타입이 잘못된 필드는 빈 값으로 표시한다. 원본 객체는 비공개 후보 기록에 별도로 남는다. 검사 경고가 있는 결과를 원고에 반영할 때는 누락·빈 값·기술 한도 초과 필드로 현재 원고를 덮어쓰지 않는다. 결과는 계속 자동 적용·자동 게시하지 않는다.
+
+다음 경우만 실제 실패로 유지한다.
+
+- Claude 통신·인증·HTTP 오류로 최초 결과를 전혀 받지 못한 경우
+- JSON을 읽을 수 없거나 단 하나의 `deliver_result` 객체도 없는 경우
+- 요청 입력, 원고 저장, 데이터베이스처럼 결과 생성 전후의 필수 기반 작업이 실패한 경우
+
+부가 필드 보정 호출이 실패해도 최초 Claude 객체가 있으므로 완료 경고로 처리한다. `max_tokens` 종료 신호라도 파싱 가능한 단일 `deliver_result` 객체가 남아 있으면 검사 대상으로 통과시키고, 객체가 없을 때만 `INCOMPLETE_OUTPUT`로 실패한다.
+
 ## 2026-09-12 수정
 
 전체 생성의 `deliver_result`에서 `gateLine`이 빠지면 본문까지 전체 실패하던 문제를 수정했다. 제공사 요청에는 `strict: true`를 적용하며, 제공사가 지원하지 않는 JSON Schema 길이/수치 제약은 설명으로 전달한다. 서버의 기존 필드 검증은 유지한다. 본문 목표 글자 수나 광고 전후 비율은 추가하지 않는다.
@@ -8,9 +22,9 @@
 
 ## 운영 경로
 
-- 제작실의 `이전 원고·작업 기록` → 각 작업의 `진단 보기` → `진단 내역 복사`.
+- 제작실의 `이전 원고·작업 기록` → 각 작업의 `검사·내역 보기` → `전체 내역 복사`.
 - 최근 실패는 생성 버튼 아래 `작업 진단`이 열린다. 성공 진단도 접힌 상태로 확인할 수 있다.
-- `GET /api/jobs/{jobId}/diagnostics`는 작업 번호, 서버 버전, 단계, 모델, 시간, 호출별 HTTP 상태·제공사 request ID·stop reason·토큰 사용량·필드 검사·보정 내역을 반환한다.
+- 검사 결과 목록과 전체 작업 내역은 화면에서 분리해 표시한다. `GET /api/jobs/{jobId}/diagnostics`는 작업 번호, 서버 버전, 단계, 모델, 시간, 호출별 HTTP 상태·제공사 request ID·stop reason·토큰 사용량·필드 검사·보정 내역을 반환한다.
 - 실패한 전체 생성의 `빠진 부가 항목 복구`는 보관된 본문을 다시 생성하지 않고 부가 필드만 보정한다. 본문 자체가 누락된 결과는 이 방법으로 복구할 수 없다.
 - 복구도 새 작업 번호를 가진다. `recoveredFrom`으로 이전 작업과 연결된다. `baseData`는 이전 생성 당시의 필드 해시를 유지해 오래된 결과의 덮어쓰기를 감지한다.
 - 결과는 자동 게시하거나 원고에 자동 적용하지 않는다. 사용자가 `결과 보기` 후 `원고에 반영`한다.
@@ -25,18 +39,18 @@
 
 | 코드 | 의미 | 조사 위치 |
 | --- | --- | --- |
-| RESULT_SCHEMA_INVALID | 필드 누락·추가·형식/부가 용량 문제 | error.fields 및 providerCalls[].fields |
-| SOCIAL_REPAIR_FAILED | 부가 문구 보정 실패 | error.fields.cause 및 social 호출 |
+| RESULT_SCHEMA_INVALID | 필드 누락·추가·형식/부가 용량 경고. 결과 객체가 있으면 작업은 완료 | inspections[].error.fields 및 providerCalls[].fields |
+| SOCIAL_REPAIR_FAILED / social_repair_failed | 부가 문구 보정 경고. 최초 결과 유지 | inspections 및 social providerCalls |
 | INCOMPLETE_OUTPUT | 출력/컨텍스트 한도로 응답 중단 | stopReason 및 usage |
 | INVALID_TOOL_RESULT | 완성된 deliver_result가 아님 | stopReason 및 비공개 원본 응답 |
 | PROVIDER_HTTP_* | 제공사의 HTTP 실패 | provider.type/message/requestId |
 | PROVIDER_TIMEOUT / PROVIDER_NETWORK | 제공사 연결 실패 | stage 및 elapsedMs |
 | WORKER_CONNECTION / CLIENT_CONNECTION | 중계 또는 브라우저 연결 종료 | 작업 번호로 서버 상태 재조회 |
-| REWRITE_OUTSIDE_SCOPE | 선택 범위 밖 문자열 변경 | 대상 구간과 생성 후보 비교 |
+| REWRITE_OUTSIDE_SCOPE | 선택 범위 밖 문자열 변경 경고. 결과 제안은 보존 | warnings 및 대상 구간 비교 |
 
 ## 수정 시 필수 검증
 
-`python3 scripts/build-original.py` 후 `node --test tests/original-ui.test.mjs`를 실행한다(Node 24). 테스트는 모든 작업 라우팅, gateLine 누락 재현, 본문 불변 보정, strict 스키마 호환, 실제 파이프라인의 호출·진단 기록, 제공사 오류와 키 마스킹, 중계 오류 전달을 검사한다. 유료 실환경 검증은 대상 원고의 결과 제안까지만 생성하고 자동 적용·게시하지 않는다.
+`python3 scripts/build-original.py` 후 `node --test tests/original-ui.test.mjs`를 실행한다(Node 24). 테스트는 모든 작업 라우팅, gateLine 누락 재현, 본문 불변 보정, strict 스키마 호환, 보정 실패와 결과 형식 실패의 완료 경고 처리, 부분 수정 범위 경고, 실제 파이프라인의 호출·진단 기록, 최초 제공사 오류와 키 마스킹, 중계 오류 전달을 검사한다. 유료 실환경 검증은 대상 원고의 결과 제안까지만 생성하고 자동 적용·게시하지 않는다.
 
 ## 2026-09-13 문체 검사
 

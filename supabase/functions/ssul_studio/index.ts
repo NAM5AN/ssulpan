@@ -13,6 +13,7 @@ import {
   promptFor,
   parseToolOutput,
   validateResult,
+  bestEffortResult,
   string,
   masterPrompt,
   schemas,
@@ -40,6 +41,45 @@ function json(data: unknown, status = 200) {
 
 function fail(status: number, message: string): never {
   throw new HttpError(status, message);
+}
+
+function recordInspection(trace: any, name: string, label: string, passed: boolean, details: any = {}) {
+  if (!trace) return;
+  trace.inspections ||= [];
+  trace.inspections.push({ name, label, status: passed ? "passed" : "review", ...details });
+}
+
+function recordWarning(trace: any, code: string, stage: string, message: string, details: any = {}) {
+  if (!trace) return;
+  trace.warnings ||= [];
+  trace.warnings.push({ code, stage, message: safeMessage(message), ...details });
+}
+
+function recordInspectionFailure(trace: any, name: string, label: string, stage: string, error: any, details: any = {}) {
+  const failure = failureInfo(error, stage);
+  const code = failure.code === "JOB_FAILED" ? name.toUpperCase() : failure.code;
+  recordInspection(trace, name, label, false, { message: failure.message, error: { ...failure, code }, ...details });
+  recordWarning(trace, code, stage, failure.message, details);
+  return { ...failure, code };
+}
+
+function inspectResult(action: string, raw: any, draft: any, target: string | undefined, trace: any, name = "result_schema", label = "생성 결과 형식") {
+  const fields = fieldReport(schemas[action], raw);
+  try {
+    const result = validateResult(action, raw, draft);
+    const inspection = { passed: true, fields };
+    recordInspection(trace, name, label, true, { fields });
+    if (name === "result_schema" && trace) trace.validation = inspection;
+    return { result, passed: true };
+  } catch (error) {
+    const failure = recordInspectionFailure(trace, name, label, name, error, { fields });
+    const inspection = { passed: false, fields, error: failure, fallback: "reviewable_result" };
+    if (name === "result_schema" && trace) {
+      trace.validation = inspection;
+      trace.validationFallback = true;
+    }
+    return { result: bestEffortResult(action, raw, draft, target), passed: false };
+  }
 }
 
 function postToDraft(p: any) {
@@ -480,7 +520,13 @@ async function claudeRequest(cred: any, action: string, d: any, target: string, 
     throw Object.assign(upstreamError(response.status),{code:"PROVIDER_HTTP_"+response.status,provider:{httpStatus:response.status,requestId:call.requestId,type:output?.error?.type,message:safeMessage(output?.error?.message)}});
   }
   call.stopReason=output.stop_reason;call.usage=output.usage;call.responseId=output.id;
-  call.fields=fieldReport(request.schema,output.content?.find((c:any)=>c.type==="tool_use"&&c.name==="deliver_result")?.input);
+  const toolUses=(output.content||[]).filter((c:any)=>c.type==="tool_use");
+  const delivered=toolUses.find((c:any)=>c.name==="deliver_result")?.input;
+  call.fields=fieldReport(request.schema,delivered);
+  const usableTool=toolUses.length===1&&delivered&&typeof delivered==="object"&&!Array.isArray(delivered);
+  const providerCheck=usableTool&&output.stop_reason==="tool_use"&&!call.fields.missing.length&&!call.fields.extra.length&&!call.fields.invalid.length;
+  recordInspection(trace,`provider_result_${trace?.providerCalls?.length||1}`,`클로드 ${action} 응답`,providerCheck,{action,stopReason:output.stop_reason,requestId:call.requestId,fields:call.fields});
+  if(usableTool&&output.stop_reason!=="tool_use")recordWarning(trace,"PROVIDER_STOP_REASON","provider_result","클로드 종료 신호가 예상과 달랐지만 확인 가능한 결과 객체를 보존했습니다.",{action,stopReason:output.stop_reason,requestId:call.requestId});
   if(trace){
     const prefix=`private/${await hashText(OWNER_ID)}/responses/${trace.jobId}/${trace.providerCalls.length}.json`;
     try{await putArtifact(prefix,JSON.stringify(output));call.rawSaved=true;}catch{call.rawSaved=false;}
@@ -513,22 +559,31 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
     return output.result;
   };
   const ownerPrefix = `private/${await hashText(OWNER_ID)}/`;
-  if (d.sourceText) await putArtifact(`${ownerPrefix}source/${await hashText(d.sourceText)}`, d.sourceText, "text/plain");
+  const archive = async (path: string, value: string, contentType = "application/json") => {
+    try { await putArtifact(path, value, contentType); }
+    catch (error) { recordInspectionFailure(trace,"artifact_archive","진단 원본 보관","artifact_archive",error); }
+  };
+  if (d.sourceText) await archive(`${ownerPrefix}source/${await hashText(d.sourceText)}`, d.sourceText, "text/plain");
   let extracted: any = null;
   if (!recovery && ["generate", "extract"].includes(action) && d.imageIds.length) {
     const images = await loadImages(d.imageIds);
     const imageKey = await hashText(JSON.stringify(d.imageIds));
     const cacheKey = `${ownerPrefix}ocr/${imageKey}`;
-    const cached = await getArtifact(cacheKey);
-    if (cached) {extracted = JSON.parse(cached);if(trace)trace.ocrCacheHit=true;}
-    else {
-      extracted = validateResult("extract", await invoke("extract", d, images), d);
-      await putArtifact(cacheKey, JSON.stringify(extracted));
+    let cached: string | null = null;
+    try { cached = await getArtifact(cacheKey); }
+    catch (error) { recordInspectionFailure(trace,"ocr_cache_read","이미지 판독 캐시 읽기","ocr_cache_read",error); }
+    let extractionRaw: any = null;
+    if (cached) {
+      try { extractionRaw = JSON.parse(cached);if(trace)trace.ocrCacheHit=true; }
+      catch (error) { cached=null;recordInspectionFailure(trace,"ocr_cache_parse","이미지 판독 캐시 형식","ocr_cache_parse",error); }
     }
+    if (!extractionRaw) extractionRaw = await invoke("extract", d, images);
+    extracted = inspectResult("extract", extractionRaw, d, undefined, trace, "ocr_result", "이미지 판독 결과 형식").result;
+    if (!cached) await archive(cacheKey, JSON.stringify(extractionRaw));
     if (d.sourceImageKey !== imageKey) {
       d = { ...d, sourceText: [d.sourceText, extracted.text].filter(Boolean).join("\n\n"), sourceImageKey: imageKey };
     }
-    if (d.sourceText) await putArtifact(`${ownerPrefix}source/${await hashText(d.sourceText)}`, d.sourceText, "text/plain");
+    if (d.sourceText) await archive(`${ownerPrefix}source/${await hashText(d.sourceText)}`, d.sourceText, "text/plain");
     d = cleanDraft(d);
   }
   let result: any;
@@ -541,7 +596,7 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
       override.text += `\n\n수정 범위(문자 오프셋, 끝 제외): ${JSON.stringify(scope)}\n선택 구간 밖의 앞·뒤 문자열은 공백과 줄바꿈까지 그대로 복사한다. text에는 대상 본문 구간 전체를 반환한다.`;
     }
     let raw = recovery ? recovery.result : await invoke(action, d, [], override);
-    await putArtifact(`${ownerPrefix}candidate/${jobId}`, JSON.stringify({
+    await archive(`${ownerPrefix}candidate/${jobId}`, JSON.stringify({
       action,
       result: raw,
       baseData,
@@ -549,42 +604,49 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
       sourceImageKey: d.sourceImageKey,
     }));
     if(action==="generate"){
-      const completed=await completeMetadata(raw,(request:any)=>invoke("metadata_repair",d,[],request));
-      raw=completed.result;
-      if(trace&&completed.repaired.length)trace.repairs.push({type:"metadata",fields:completed.repaired});
+      try {
+        const completed=await completeMetadata(raw,(request:any)=>invoke("metadata_repair",d,[],request));
+        raw=completed.result;
+        if(trace&&completed.repaired.length)trace.repairs.push({type:"metadata",fields:completed.repaired});
+        recordInspection(trace,"metadata_completion","필수 부가 항목 보완",true,{repairedFields:completed.repaired});
+      } catch(error) {
+        recordInspectionFailure(trace,"metadata_repair_failed","필수 부가 항목 보완","metadata_repair",error);
+      }
     }
     if (["generate", "social"].includes(action)) {
       let candidate = action === "generate"
         ? { ...d, ...raw }
         : { ...d, ...Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, raw[key]])) };
-      const invalidFields = [...new Set(socialIssues(candidate).errors.map((issue: any) => issue.field))];
-      if (invalidFields.length) {
-        try {
+      try {
+        const firstCheck=socialIssues(candidate);
+        const invalidFields = [...new Set(firstCheck.errors.map((issue: any) => issue.field))];
+        if (invalidFields.length) {
           const repair = await buildSocialRepairRequest(candidate, { fields: invalidFields, revision: 0 });
           const fixed = await invoke("social", d, [], repair.providerRequest);
           candidate = (await applySocialRepair(candidate, fixed, repair, { revision: 0 })).candidate;
           if(trace)trace.repairs.push({type:"social",fields:invalidFields});
-        } catch(error) {
-          throw Object.assign(new HttpError(502,"부가 문구 보정이 완료되지 않았어요. 생성한 본문은 보관했습니다."),{code:"SOCIAL_REPAIR_FAILED",details:{fields:invalidFields,cause:failureInfo(error,"social")}});
         }
+        const finalCheck=socialIssues(candidate);
+        const socialPassed=!finalCheck.errors.length&&!finalCheck.warnings.length;
+        recordInspection(trace,"social_fields","표지·캡션·해시태그 검사",socialPassed,{errors:finalCheck.errors,warnings:finalCheck.warnings,repairedFields:invalidFields});
+        if(finalCheck.errors.length||finalCheck.warnings.length)recordWarning(trace,"SOCIAL_FIELDS_REVIEW","social_fields","표지·캡션·해시태그에 확인할 항목이 있습니다.",{errors:finalCheck.errors,warnings:finalCheck.warnings});
+        raw = action === "generate"
+          ? { ...raw, ...Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, candidate[key]])) }
+          : Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, candidate[key]]));
+      } catch(error) {
+        recordInspectionFailure(trace,"social_repair_failed","표지·캡션·해시태그 검사","social_repair",error);
       }
-      raw = action === "generate"
-        ? { ...raw, ...Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, candidate[key]])) }
-        : Object.fromEntries(SOCIAL_FIELDS.map((key) => [key, candidate[key]]));
     }
     await checkpoint(trace,"validate");
-    result = validateResult(action, raw, d);
+    result = inspectResult(action, raw, d, target, trace).result;
     if (["generate", "rewrite"].includes(action) && trace) {
-      const styleText = action === "generate" ? `${result.beforeContent}\n\n${result.afterContent}` : result.text;
-      trace.styleCheck = analyzeNarrativeEndings(styleText, { tone: d.options.tone });
-      if (trace.styleCheck.warning) {
-        trace.warnings.push({
-          code: "LITERARY_ENDING_RATIO",
-          message: "평서형 문어 종결 비율이 높아 사람 확인이 필요합니다.",
-          literaryEndingCount: trace.styleCheck.literaryEndingCount,
-          narrativeSentenceCount: trace.styleCheck.narrativeSentenceCount,
-          ratio: trace.styleCheck.ratio,
-        });
+      try {
+        const styleText = action === "generate" ? `${result.beforeContent}\n\n${result.afterContent}` : result.text;
+        trace.styleCheck = analyzeNarrativeEndings(styleText, { tone: d.options.tone });
+        recordInspection(trace,"writing_style","구어체 종결 검사",!trace.styleCheck.warning,{result:trace.styleCheck});
+        if (trace.styleCheck.warning) recordWarning(trace,"LITERARY_ENDING_RATIO","writing_style","평서형 문어 종결 비율이 높아 사람 확인이 필요합니다.",{literaryEndingCount:trace.styleCheck.literaryEndingCount,narrativeSentenceCount:trace.styleCheck.narrativeSentenceCount,ratio:trace.styleCheck.ratio});
+      } catch(error) {
+        recordInspectionFailure(trace,"writing_style_failed","구어체 종결 검사","writing_style",error);
       }
       await checkpoint(trace, "style_check");
     }
@@ -592,25 +654,32 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
       const text = d[target === "before" ? "beforeContent" : "afterContent"];
       const prefix = text.slice(0, scope.start);
       const suffix = text.slice(scope.end);
-      if (result.text.length < prefix.length + suffix.length || !result.text.startsWith(prefix) || !result.text.endsWith(suffix)) {
-        throw Object.assign(new HttpError(502,"선택한 범위 밖의 문장이 바뀌어 반영하지 않았어요. 기존 원고는 유지했습니다."),{code:"REWRITE_OUTSIDE_SCOPE"});
-      }
+      const scopePassed=typeof result.text==="string"&&result.text.length>=prefix.length+suffix.length&&result.text.startsWith(prefix)&&result.text.endsWith(suffix);
+      recordInspection(trace,"rewrite_scope","부분 수정 범위 검사",scopePassed,{scope});
+      if(!scopePassed)recordWarning(trace,"REWRITE_OUTSIDE_SCOPE","rewrite_scope","선택한 범위 밖의 문장이 달라졌습니다. 결과는 보존했으며 반영 전 확인이 필요합니다.",{scope});
     }
     if (action === "generate") result = { ...result, sourceText: d.sourceText, sourceImageKey: d.sourceImageKey };
   }
   if (["generate", "review"].includes(action) && d.sourceText) {
     await checkpoint(trace,"preservation");
-    const baseline = await createSourceBaseline({
-      sourceText: d.sourceText,
-      complete: !extracted?.uncertain && !d.sourceText.includes("[판독 불가]"),
-    });
-    const preservation = await inspectSourcePreservation({
-      sourceText: d.sourceText,
-      resultText: action === "generate" ? `${result.beforeContent}\n\n${result.afterContent}` : `${d.beforeContent}\n\n${d.afterContent}`,
-      baseline,
-    });
-    result.preservation = preservation;
-    if (action === "review") result.summary += `\n\n원문 보존 자동 검사(의미 일치 판정 아님): ${JSON.stringify(preservation.issues)}`;
+    try {
+      const baseline = await createSourceBaseline({
+        sourceText: d.sourceText,
+        complete: !extracted?.uncertain && !d.sourceText.includes("[판독 불가]"),
+      });
+      const preservation = await inspectSourcePreservation({
+        sourceText: d.sourceText,
+        resultText: action === "generate" ? `${result.beforeContent||""}\n\n${result.afterContent||""}` : `${d.beforeContent}\n\n${d.afterContent}`,
+        baseline,
+      });
+      result.preservation = preservation;
+      const preservationPassed=!preservation.issues.length;
+      recordInspection(trace,"source_preservation","원문 보존 신호 검사",preservationPassed,{semanticVerdict:preservation.semanticVerdict,sourceStatus:preservation.sourceStatus,checks:preservation.checks,issues:preservation.issues,limitations:preservation.limitations});
+      if(!preservationPassed)recordWarning(trace,"SOURCE_PRESERVATION_REVIEW","source_preservation","원문 보존 검사에 사람이 확인할 항목이 있습니다.",{issueCount:preservation.issues.length});
+      if (action === "review") result.summary = `${result.summary||""}\n\n원문 보존 자동 검사(의미 일치 판정 아님): ${JSON.stringify(preservation.issues)}`.trim();
+    } catch(error) {
+      recordInspectionFailure(trace,"source_preservation_failed","원문 보존 신호 검사","source_preservation",error);
+    }
   }
   return { result, calls, usage, model: cred.model, promptUsage: null, promptRevision: saved.revision, baseData };
 }
@@ -675,7 +744,7 @@ async function runJob(input: any) {
   if ((running || []).length) fail(409, "진행 중인 클로드 작업이 있어요. 작업 기록에서 확인해 주세요.");
   const instruction = string(input.instruction, 2000);
   const model = cred.model;
-  const trace:any={version:1,release:GENERATION_RELEASE,jobId,draftId,action,model,stage:"queued",startedAt:new Date().toISOString(),events:[],providerCalls:[],repairs:[],warnings:[],...(input.recoverJobId?{recoveredFrom:input.recoverJobId}:{})};
+  const trace:any={version:2,release:GENERATION_RELEASE,jobId,draftId,action,model,status:"running",stage:"queued",startedAt:new Date().toISOString(),events:[],providerCalls:[],repairs:[],inspections:[],warnings:[],policy:{postProviderValidation:"report_only",usableClaudeResult:"complete_job"},...(input.recoverJobId?{recoveredFrom:input.recoverJobId}:{})};
   const { error: insertError } = await admin.from("ssul_jobs").insert({
     id: jobId,
     owner_id: OWNER_ID,
@@ -690,7 +759,7 @@ async function runJob(input: any) {
   if (insertError) throw insertError;
   try {
     const output = await callClaude(action, d, target, instruction, jobId, scope, trace, recovery);
-    trace.stage="completed";trace.finishedAt=new Date().toISOString();trace.elapsedMs=Date.now()-Date.parse(trace.startedAt);
+    trace.stage="completed";trace.status="done";trace.outcome=trace.warnings.length?"completed_with_warnings":"passed";trace.finishedAt=new Date().toISOString();trace.elapsedMs=Date.now()-Date.parse(trace.startedAt);
     const envelope = { ...output, target, diagnostics:trace };
     const { error: updateError } = await admin.from("ssul_jobs").update({
       status: "done",
@@ -703,7 +772,7 @@ async function runJob(input: any) {
     return { id: jobId, ...envelope };
   } catch (error) {
     const message = safeMessage(error instanceof Error ? error.message : String(error));
-    trace.error=failureInfo(error,trace.stage);trace.finishedAt=new Date().toISOString();trace.elapsedMs=Date.now()-Date.parse(trace.startedAt);
+    trace.status="failed";trace.outcome="no_usable_result";trace.error=failureInfo(error,trace.stage);trace.finishedAt=new Date().toISOString();trace.elapsedMs=Date.now()-Date.parse(trace.startedAt);
     (error as any).diagnostics=trace;
     await admin.from("ssul_jobs").update({ status: "failed", error: message, result:{diagnostics:trace}, usage:trace.providerCalls.map((call:any)=>call.usage).filter(Boolean), finished_at: new Date().toISOString() })
       .eq("id", jobId).eq("owner_id", OWNER_ID);

@@ -205,6 +205,19 @@ test('validated generate result retains the thirteenth imageText field',()=>{
  assert.equal(Object.hasOwn(result,'imageText'),true);assert.equal(result.imageText,'');
 });
 
+test('a parsed deliver_result remains reviewable even with an incomplete provider stop reason',()=>{
+ const partial={title:'확인 가능한 결과'};
+ assert.deepEqual(studioCore.parseToolOutput({stop_reason:'max_tokens',content:[{type:'tool_use',name:'deliver_result',input:partial}]}),partial);
+ assert.throws(()=>studioCore.parseToolOutput({stop_reason:'max_tokens',content:[{type:'text',text:'unfinished'}]}),error=>error.code==='INCOMPLETE_OUTPUT');
+});
+
+test('best-effort result keeps returned text visible without inventing missing fields',()=>{
+ const raw=validGenerated();delete raw.gateLine;raw.titles=['첫 후보',7,'둘째 후보'];
+ const result=studioCore.bestEffortResult('generate',raw,studioCore.cleanDraft({}));
+ assert.equal(result.beforeContent,raw.beforeContent);assert.equal(result.gateLine,'');assert.deepEqual(result.titles,['첫 후보','둘째 후보']);
+ assert.deepEqual(Object.keys(result).sort(),Object.keys(studioCore.schemas.generate.properties).sort());
+});
+
 test('strict provider schema removes unsupported constraints without weakening local contracts',()=>{
  const schema=generationSupport.strictSchema(studioCore.schemas.generate);
  assert.equal(schema.additionalProperties,false);assert.equal(schema.required.length,13);
@@ -237,6 +250,43 @@ test('real generation pipeline repairs the missing field and records request IDs
  assert.ok(updates.some(v=>v.status==='done'));assert.ok(!updates.some(v=>Object.hasOwn(v,'data')));
 });
 
+test('metadata repair and result inspection failures keep the Claude body and finish with warnings',async()=>{
+ let calls=0;const candidate=validGenerated();delete candidate.gateLine;
+ const {context,updates}=edgeHarness(async()=>{
+  calls++;
+  if(calls===1)return Response.json({id:'msg-soft',stop_reason:'tool_use',usage:{input_tokens:5,output_tokens:6},content:[{type:'tool_use',name:'deliver_result',input:candidate}]},{headers:{'request-id':'req-soft-1'}});
+  return Response.json({error:{type:'api_error',message:'repair unavailable'}},{status:500,headers:{'request-id':'req-soft-2'}});
+ });
+ const out=await vm.runInContext(`runJob({jobId:'soft-validation-job',draftId:'soft-validation-draft',action:'generate',data:{notes:'여행 중 인형을 잃어버린 소재'}})`,context);
+ assert.equal(calls,2);assert.equal(out.result.beforeContent,candidate.beforeContent);assert.equal(out.result.afterContent,candidate.afterContent);assert.equal(out.result.gateLine,'');
+ assert.equal(out.diagnostics.status,'done');assert.equal(out.diagnostics.outcome,'completed_with_warnings');assert.equal(out.diagnostics.validation.passed,false);assert.equal(out.diagnostics.validationFallback,true);
+ assert.ok(out.diagnostics.inspections.some(item=>item.name==='metadata_repair_failed'&&item.status==='review'));
+ assert.ok(out.diagnostics.inspections.some(item=>item.name==='result_schema'&&item.status==='review'));
+ assert.ok(out.diagnostics.warnings.some(item=>item.stage==='metadata_repair'));
+ assert.ok(updates.some(value=>value.status==='done'));assert.ok(!updates.some(value=>value.status==='failed'));
+});
+
+test('social repair failure is reported but does not discard an otherwise usable generation',async()=>{
+ let calls=0;const candidate=validGenerated();candidate.coverDetail='본문에는 없는 표지 문장';
+ const {context,updates}=edgeHarness(async()=>{
+  calls++;
+  if(calls===1)return Response.json({id:'msg-social',stop_reason:'tool_use',usage:{input_tokens:5,output_tokens:6},content:[{type:'tool_use',name:'deliver_result',input:candidate}]});
+  return Response.json({error:{type:'api_error',message:'social repair unavailable'}},{status:500});
+ });
+ const out=await vm.runInContext(`runJob({jobId:'soft-social-job',draftId:'soft-social-draft',action:'generate',data:{notes:'인형 소재'}})`,context);
+ assert.equal(calls,2);assert.equal(out.result.coverDetail,candidate.coverDetail);assert.equal(out.diagnostics.validation.passed,true);assert.equal(out.diagnostics.status,'done');
+ assert.ok(out.diagnostics.inspections.some(item=>item.name==='social_repair_failed'&&item.status==='review'));
+ assert.ok(updates.some(value=>value.status==='done'));assert.ok(!updates.some(value=>value.status==='failed'));
+});
+
+test('rewrite scope mismatch is a report-only warning and leaves the proposal available',async()=>{
+ const {context,updates}=edgeHarness(async()=>Response.json({id:'msg-rewrite',stop_reason:'tool_use',usage:{input_tokens:2,output_tokens:3},content:[{type:'tool_use',name:'deliver_result',input:{text:'완전히 다른 본문'}}]}));
+ const out=await vm.runInContext(`runJob({jobId:'soft-rewrite-job',draftId:'soft-rewrite-draft',action:'rewrite',target:'before',scope:{start:2,end:5},data:{beforeContent:'앞부분 원문 그대로',afterContent:'뒷부분 원문 그대로'}})`,context);
+ assert.equal(out.result.text,'완전히 다른 본문');assert.equal(out.diagnostics.status,'done');
+ assert.ok(out.diagnostics.warnings.some(item=>item.code==='REWRITE_OUTSIDE_SCOPE'));
+ assert.ok(updates.some(value=>value.status==='done'));assert.ok(!updates.some(value=>value.status==='failed'));
+});
+
 test('provider failure is saved with exact HTTP error and redacted diagnostics',async()=>{
  const {context,updates}=edgeHarness(async()=>Response.json({error:{type:'authentication_error',message:'Invalid key sk-ant-private-123'}},{status:401,headers:{'request-id':'req-failed'}}));
  await assert.rejects(()=>vm.runInContext(`runJob({jobId:'failed-job',draftId:'failed-draft',action:'generate',data:{sourceText:'소재 내용'}})`,context),error=>error.diagnostics.error.code==='PROVIDER_HTTP_401');
@@ -252,6 +302,11 @@ test('worker passes diagnostics on failed streams and exposes history diagnostic
   const failed=(await r.text()).trim().split('\n').map(JSON.parse).find(e=>e.type==='failed');assert.deepEqual(failed.diagnostics,diagnostics);
   const history=await worker.fetch(new Request('https://ssulpan.test/api/jobs/job-1/diagnostics'),{});assert.deepEqual((await history.json()).diagnostics,diagnostics);
  }finally{globalThis.fetch=saved;}
+});
+
+test('studio separates inspection results from the complete job history',()=>{
+ const html=fs.readFileSync('studio.html','utf8'),script=fs.readFileSync('studio.js','utf8');
+ assert.match(html,/id="inspection-results"/);assert.match(html,/전체 작업 내역/);assert.match(script,/검사 경고/);assert.match(script,/validationFallback/);
 });
 
 test('the applied master prompt makes colloquial and eumseongche defaults explicit without overriding action or quotations',()=>{

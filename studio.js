@@ -10,8 +10,11 @@
   function showDiagnostics(value,jobId,open=false){
     const diagnostic={...value,jobId:value?.jobId||jobId};
     const panel=$('job-diagnostics');panel.hidden=false;panel.open=open;
-    const failed=diagnostic.error,missing=failed?.fields?.missing||[];
-    $('diagnostics-summary').textContent=[diagnostic.jobId?'작업 번호: '+diagnostic.jobId:'',failed?'오류 코드: '+failed.code:'상태: '+(diagnostic.status||diagnostic.stage||'확인 중'),diagnostic.stage?'단계: '+diagnostic.stage:'',missing.length?'누락 항목: '+missing.join(', '):''].filter(Boolean).join(' · ');
+    const failed=diagnostic.error,missing=failed?.fields?.missing||[],warnings=diagnostic.warnings||[],inspections=diagnostic.inspections||[];
+    $('diagnostics-summary').textContent=[diagnostic.jobId?'작업 번호: '+diagnostic.jobId:'',failed?'실패 · '+failed.code:warnings.length?'완료 · 검사 경고 '+warnings.length+'건':'완료 · 검사 통과',diagnostic.stage?'마지막 단계: '+diagnostic.stage:'',missing.length?'누락 항목: '+missing.join(', '):''].filter(Boolean).join(' · ');
+    const list=$('inspection-results');list.replaceChildren();
+    if(!inspections.length){const row=document.createElement('li');row.textContent='기록된 서버 검사가 없습니다.';list.append(row);}
+    inspections.forEach(item=>{const row=document.createElement('li'),label=document.createElement('span'),status=document.createElement('span'),detail=document.createElement('small');label.textContent=item.label||item.name||'서버 검사';status.className='inspection-status '+(item.status==='passed'?'passed':'review');status.textContent=item.status==='passed'?'통과':'확인 필요';const fields=item.fields||item.error?.fields||{},parts=[item.message||item.error?.message,fields.missing?.length?'누락: '+fields.missing.join(', '):'',fields.extra?.length?'추가 필드: '+fields.extra.join(', '):'',fields.invalid?.length?'형식: '+fields.invalid.map(value=>value.field).join(', '):''].filter(Boolean);detail.textContent=parts.join(' · ')||'검사 내역이 기록됐습니다.';row.append(label,status,detail);list.append(row);});
     $('diagnostics-json').textContent=JSON.stringify(diagnostic,null,2);
   }
   const empty=()=>({title:'',category:'일상',teaser:'',beforeContent:'',afterContent:'',hook:'',coverDetail:'',caption:'',hashtags:'#썰판 #썰',sourceText:'',sourceUrl:'',storyBible:'',notes:'',gateLine:'',rewriteInstruction:'',titles:[],fadeHeight:180,imageIds:[],options:{tone:'친구에게 말하듯',tension:'높게',dialogue:'보통',lengthMode:'source'}});
@@ -51,7 +54,8 @@
   function fill(data){loading=true;current.data={...empty(),...data};for(const [key,element] of Object.entries(fields))$(element).value=current.data[key]||'';$('fade-height').value=current.data.fadeHeight||180;for(const key of ['tone','tension','dialogue'])$(key).value=current.data.options?.[key]??empty().options[key];loading=false;counts();renderCover();renderImages();updatePreview();updateItem();}
   function publication(){const published=items.find(i=>i.id===current?.id)?.published;$('article-url').value=published?new URL('/stories/'+current.id+'/',location.origin).href:'';$('open-reader').hidden=!published;$('open-reader').href=published?'/stories/'+current.id+'/':'/';$('publication-note').textContent=published?'게시된 글은 공개 사이트에서 바로 확인할 수 있습니다.':'사이트에 게시하면 이어 읽기 주소가 표시됩니다.';$('publish-story').textContent=published?'게시글 업데이트':'사이트에 게시';}
   function showProposal(action,result,target,sourceId=current?.id,metadata={}){
-    proposal={action,result,target,draftId:sourceId,promptRevision:metadata.promptRevision,baseData:metadata.baseData};selectedTitle=null;
+    const warningCount=metadata.diagnostics?.warnings?.length||0;
+    proposal={action,result,target,draftId:sourceId,promptRevision:metadata.promptRevision,baseData:metadata.baseData,warningCount,validationFallback:!!metadata.diagnostics?.validationFallback};selectedTitle=null;
     $('proposal').hidden=false;$('proposal-title').textContent=action==='version'?'이전 원고':action==='backup'?'저장 전 임시 원고':labels[action]+' 결과';
     $('proposal-note').textContent='결과를 확인한 뒤 원고에 반영하세요.';$('apply-proposal').hidden=action==='review';
     $('apply-proposal').textContent=action==='prompt'?'작성 지침으로 저장':'원고에 반영';$('proposal-titles').replaceChildren();
@@ -65,14 +69,15 @@
       $('proposal-text').value=result.text;$('proposal-note').textContent=(result.uncertain||'이미지에서 읽은 내용을 확인해 주세요.')+' 기존 소재 내용 아래에 추가됩니다.';
     }else if(action==='social'){
       $('proposal-text').value=['[표지 제목]',result.hook,'[하단 문장]',result.coverDetail,'[캡션]',result.caption,result.hashtags].join('\n\n');
-    }else if(action==='review')$('proposal-text').value=[result.summary,...result.issues.map(x=>`${x.section}\n${x.problem}\n제안: ${x.suggestion}`)].join('\n\n');
+    }else if(action==='review')$('proposal-text').value=[result.summary,...(result.issues||[]).map(x=>`${x.section}\n${x.problem}\n제안: ${x.suggestion}`)].join('\n\n');
     else if(action==='split')$('proposal-text').value=['[미리 보여줄 내용]',result.beforeContent,'[광고 후 보여줄 내용]',result.afterContent].join('\n\n');
     if(action==='generate'||action==='social'){
       selectedTitle=action==='generate'?result.title:null;
       (result.titles||[]).forEach(title=>{const b=document.createElement('button');b.className='btn light';b.textContent=title;b.setAttribute('aria-pressed',String(title===selectedTitle));
-        b.onclick=()=>{selectedTitle=selectedTitle===title?null:title;for(const button of $('proposal-titles').children)button.setAttribute('aria-pressed',String(button.textContent===selectedTitle));$('proposal-note').textContent=selectedTitle?'선택한 제목을 게시글 제목에 반영합니다.':action==='generate'?'클로드가 고른 제목과 전체 결과를 반영합니다.':'표지와 캡션을 반영합니다.';};$('proposal-titles').append(b);
+        b.onclick=()=>{selectedTitle=selectedTitle===title?null:title;for(const button of $('proposal-titles').children)button.setAttribute('aria-pressed',String(button.textContent===selectedTitle));$('proposal-note').textContent=(selectedTitle?'선택한 제목을 게시글 제목에 반영합니다.':action==='generate'?'클로드가 고른 제목과 전체 결과를 반영합니다.':'표지와 캡션을 반영합니다.')+(warningCount?' 서버 검사 경고도 확인하세요.':'');};$('proposal-titles').append(b);
       });
     }
+    if(warningCount)$('proposal-note').textContent+=' 서버 검사에서 '+warningCount+'건이 표시됐지만 결과는 보존했습니다. 검사 결과를 확인한 뒤 반영하세요.';
     $('proposal').scrollIntoView({behavior:'smooth',block:'start'});
   }
   function openWorkspace(result){
@@ -109,7 +114,7 @@
       function consume(line){
         if(!line.trim())return;const event=JSON.parse(line);
         if(event.type==='failed')throw Object.assign(new Error(event.message),{diagnostics:event.diagnostics});
-        if(event.type==='done'){done=true;if(event.diagnostics)showDiagnostics(event.diagnostics,event.jobId);if(current?.id===did)showProposal(action,event.result,target,did,event);work(labels[action]+' 완료 · 클로드 '+event.calls+'회 호출. 결과를 확인해 주세요.'+(event.diagnostics?.styleCheck?.warning?' · 문어체 종결이 많아 확인이 필요해요.':''));}
+        if(event.type==='done'){done=true;const warningCount=event.diagnostics?.warnings?.length||0;if(event.diagnostics)showDiagnostics(event.diagnostics,event.jobId);if(current?.id===did)showProposal(action,event.result,target,did,event);work(labels[action]+' 완료 · 클로드 '+event.calls+'회 호출. 결과를 확인해 주세요.'+(warningCount?' · 서버 검사 경고 '+warningCount+'건은 별도로 표시했어요.':''));}
         else if(event.type==='progress')work(event.message);
       }
       for(;;){const part=await reader.read();if(part.done)break;pending+=decoder.decode(part.value,{stream:true});let n;while((n=pending.indexOf('\n'))>=0){const line=pending.slice(0,n);pending=pending.slice(n+1);consume(line);}}
@@ -122,7 +127,28 @@
       if(diagnostic.status==='done')work('서버 작업은 완료됐어요. 이전 원고·작업 기록에서 결과를 열어 주세요.');
     }finally{busy=false;aiButtons.forEach(b=>b.disabled=false);await refreshPrompt().catch(e=>{$('prompt-status').textContent=e.message;});}
   }
-  async function history(){const historyId=current.id;const [v,j]=await Promise.all([api('/api/drafts/'+historyId+'/versions'),api('/api/jobs')]);if(current?.id!==historyId)return;for(const [element,rows,kind] of [[$('version-list'),v.versions,'version'],[$('job-list'),j.jobs,'job']]){element.replaceChildren();if(!rows.length){const p=document.createElement('p');p.className='micro';p.textContent='아직 기록이 없어요.';element.append(p);}rows.forEach(r=>{const row=document.createElement('div');row.className='history-row';const p=document.createElement('p');p.textContent=new Date(r.created_at).toLocaleString('ko-KR')+' · '+(kind==='version'?r.reason:labels[r.action]+' · '+({running:'진행 중',done:'완료',failed:'실패',interrupted:'연결 종료 — 재실행 가능'}[r.status]||r.status))+(r.error?' · '+r.error:'');row.append(p);if(kind==='job'){const diag=document.createElement('button');diag.className='btn light';diag.textContent='진단 보기';diag.onclick=guard(async()=>{const out=await api('/api/jobs/'+r.id+'/diagnostics');showDiagnostics(out.diagnostics,r.id,true);$('job-diagnostics').scrollIntoView({behavior:'smooth',block:'center'});});row.append(diag);}if(kind==='job'&&r.status==='failed'){const recover=document.createElement('button');recover.className='btn light';recover.textContent='보관된 원본 결과';recover.onclick=guard(async()=>{const raw=await api('/api/jobs/'+r.id+'/candidate');await copy(JSON.stringify(raw,null,2));});row.append(recover);if(r.action==='generate'){const fix=document.createElement('button');fix.className='btn light';fix.textContent='빠진 부가 항목 복구';fix.onclick=guard(async()=>{if(busy||loading||uploading)return;if(current.id!==r.draft_id)await choose(r.draft_id);if(current.id===r.draft_id)await run('generate',undefined,r.id);});row.append(fix);}}if(kind==='version'||r.status==='done'){const b=document.createElement('button');b.className='btn light';b.textContent='결과 보기';b.onclick=async()=>{if(kind==='version'&&current.id!==historyId)await choose(historyId);if(kind==='version'&&current.id!==historyId)return;if(kind==='job'&&current.id!==r.draft_id)await choose(r.draft_id);if(kind==='job'&&current.id!==r.draft_id)return;showProposal(kind==='version'?'version':r.action,kind==='version'?r.data:r.result.result,r.result?.target,kind==='version'?historyId:r.draft_id,r.result||{});};row.append(b);}element.append(row);});}}
+  async function history(){
+    const historyId=current.id;
+    const [v,j]=await Promise.all([api('/api/drafts/'+historyId+'/versions'),api('/api/jobs')]);
+    if(current?.id!==historyId)return;
+    for(const [element,rows,kind] of [[$('version-list'),v.versions,'version'],[$('job-list'),j.jobs,'job']]){
+      element.replaceChildren();
+      if(!rows.length){const p=document.createElement('p');p.className='micro';p.textContent='아직 기록이 없어요.';element.append(p);}
+      rows.forEach(r=>{
+        const row=document.createElement('div'),p=document.createElement('p'),warningCount=kind==='job'?(r.result?.diagnostics?.warnings?.length||0):0;
+        row.className='history-row';
+        p.textContent=new Date(r.created_at).toLocaleString('ko-KR')+' · '+(kind==='version'?r.reason:labels[r.action]+' · '+({running:'진행 중',done:'완료',failed:'실패',interrupted:'연결 종료 — 재실행 가능'}[r.status]||r.status))+(warningCount?' · 검사 경고 '+warningCount+'건':'')+(r.error?' · '+r.error:'');
+        row.append(p);
+        if(kind==='job'){
+          const diag=document.createElement('button');diag.className='btn light';diag.textContent='검사·내역 보기';diag.onclick=guard(async()=>{const out=await api('/api/jobs/'+r.id+'/diagnostics');showDiagnostics(out.diagnostics,r.id,true);$('job-diagnostics').scrollIntoView({behavior:'smooth',block:'center'});});row.append(diag);
+          if(r.status==='failed'||warningCount){const recover=document.createElement('button');recover.className='btn light';recover.textContent='보관된 원본 결과';recover.onclick=guard(async()=>{const raw=await api('/api/jobs/'+r.id+'/candidate');await copy(JSON.stringify(raw,null,2));});row.append(recover);}
+          if(r.status==='failed'&&r.action==='generate'){const fix=document.createElement('button');fix.className='btn light';fix.textContent='빠진 부가 항목 복구';fix.onclick=guard(async()=>{if(busy||loading||uploading)return;if(current.id!==r.draft_id)await choose(r.draft_id);if(current.id===r.draft_id)await run('generate',undefined,r.id);});row.append(fix);}
+        }
+        if(kind==='version'||r.status==='done'){const b=document.createElement('button');b.className='btn light';b.textContent='결과 보기';b.onclick=async()=>{if(kind==='version'&&current.id!==historyId)await choose(historyId);if(kind==='version'&&current.id!==historyId)return;if(kind==='job'&&current.id!==r.draft_id)await choose(r.draft_id);if(kind==='job'&&current.id!==r.draft_id)return;showProposal(kind==='version'?'version':r.action,kind==='version'?r.data:r.result.result,r.result?.target,kind==='version'?historyId:r.draft_id,r.result||{});};row.append(b);}
+        element.append(row);
+      });
+    }
+  }
   async function copy(text){try{await navigator.clipboard.writeText(text);message('복사했어요.');}catch{let el=$('copy-fallback');if(!el){el=document.createElement('textarea');el.id='copy-fallback';el.setAttribute('aria-label','직접 복사할 원고');$('status').after(el);}el.value=text;el.focus();el.select();message('아래 원고를 길게 눌러 복사해 주세요.');}}
   const guard=fn=>async(...args)=>{try{await fn(...args);}catch(e){message(e.message);}};
   for(const element of [...Object.values(fields),'tone','tension','dialogue','fade-height'])$(element).addEventListener('input',changed);
@@ -162,10 +188,14 @@
     if(!proposal||proposal.draftId!==current.id)throw new Error('결과에 해당하는 원고를 먼저 열어 주세요.');
     if(busy||loading||uploading)throw new Error('진행 중인 작업이 끝난 뒤 반영해 주세요.');
     const candidate=proposal,r=candidate.result,chosenTitle=selectedTitle,button=$('apply-proposal');button.disabled=true;busy=true;$('new-story').disabled=true;
+    const capacities={title:160,category:30,teaser:240,beforeContent:60000,afterContent:60000,storyBible:10000,gateLine:100,hook:120,coverDetail:100,caption:5000,hashtags:500};
+    const usable=(key,value)=>typeof value==='string'&&value.trim()&&(!capacities[key]||value.length<=capacities[key]);
+    const usableTitles=value=>Array.isArray(value)&&value.length>0&&value.length<=3&&value.every(title=>typeof title==='string'&&title.trim()&&title.length<=160);
     try{
       if(candidate.action==='prompt'){
         if(promptDirty)throw new Error('직접 수정한 지침을 먼저 저장해 주세요. 그다음 새 지침을 생성할 수 있어요.');
         if(promptSaving)throw new Error('작성 지침을 저장 중이에요. 잠시 후 다시 눌러 주세요.');
+        if(typeof r.prompt!=='string'||!r.prompt.trim())throw new Error('반영할 작성 지침이 없습니다. 검사 결과와 원본 응답을 확인해 주세요.');
         promptSaving=true;const previous=$('writing-prompt').value;
         try{const state=await api('/api/writing-prompt',{method:'PUT',body:JSON.stringify({prompt:r.prompt,revision:candidate.promptRevision})});
           if($('writing-prompt').value===previous)setPrompt(state);else{promptState=state;promptDirty=true;promptStatus();}
@@ -174,13 +204,18 @@
       }else{
         await save('클로드 결과 반영 전');const d=collect();if(candidate.baseData){for(const [k,v] of Object.entries(JSON.parse(candidate.baseData)))if(await fingerprint(d[k]??(k==='sourceImageKey'?'':undefined))!==v)throw new Error('생성 이후 원고가 바뀌었어요. 결과를 복사해 필요한 부분에 반영해 주세요.');}
         if(candidate.action==='generate'){
-          const generated={};for(const key of ['title','titles','category','teaser','beforeContent','afterContent','storyBible','gateLine','hook','coverDetail','caption','hashtags'])generated[key]=r[key];
-          if(chosenTitle)generated.title=chosenTitle;if(r.sourceText)generated.sourceText=r.sourceText;generated.sourceImageKey=r.sourceImageKey||'';
+          const generated={};
+          for(const key of ['title','category','teaser','beforeContent','afterContent','storyBible','gateLine','hook','coverDetail','caption','hashtags'])if(!candidate.validationFallback||usable(key,r[key]))generated[key]=r[key];
+          if(!candidate.validationFallback||usableTitles(r.titles))generated.titles=r.titles;
+          if(chosenTitle&&usable('title',chosenTitle))generated.title=chosenTitle;if(r.sourceText)generated.sourceText=r.sourceText;generated.sourceImageKey=r.sourceImageKey||'';
           fill({...d,...generated});
         }else if(['version','backup'].includes(candidate.action))fill(r);
-        else if(candidate.action==='rewrite')fill({...d,[candidate.target==='after'?'afterContent':'beforeContent']:r.text});
-        else if(candidate.action==='extract')fill({...d,sourceText:r.sourceText||[d.sourceText,r.text].filter(Boolean).join('\n\n'),sourceImageKey:r.sourceImageKey||''});
-        else if(candidate.action==='social')fill({...d,...r,title:chosenTitle||d.title});
+        else if(candidate.action==='rewrite'){if(!usable(candidate.target==='after'?'afterContent':'beforeContent',r.text))throw new Error('반영할 수정 본문이 없습니다. 검사 결과와 원본 응답을 확인해 주세요.');fill({...d,[candidate.target==='after'?'afterContent':'beforeContent']:r.text});}
+        else if(candidate.action==='extract')fill({...d,sourceText:r.sourceText||[d.sourceText,typeof r.text==='string'?r.text:''].filter(Boolean).join('\n\n'),sourceImageKey:r.sourceImageKey||''});
+        else if(candidate.action==='social'){
+          const social={};for(const key of ['hook','coverDetail','caption','hashtags'])if(!candidate.validationFallback||usable(key,r[key]))social[key]=r[key];if(!candidate.validationFallback||usableTitles(r.titles))social.titles=r.titles;
+          fill({...d,...social,title:chosenTitle&&usable('title',chosenTitle)?chosenTitle:d.title});
+        }
         else if(candidate.action==='split')fill({...d,...r});
         dirty=true;temporaryBackup();await save('결과 반영 전 원고');
         message('원고에 반영하고 저장했어요. 사이트 게시글은 게시 버튼을 눌러야 바뀝니다.');
