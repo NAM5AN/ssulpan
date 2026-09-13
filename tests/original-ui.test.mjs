@@ -444,4 +444,6 @@ test('studio session signatures reject tampering and expiration',async()=>{
   assert.notEqual(await studioAuth.passwordDigest('0000',record.passwordSalt),record.passwordDigest);
   const edgeSource=fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8');
   assert.match(edgeSource,/studio_access_verify/);assert.match(edgeSource,/checkStudioSession\(body\.studioSession\)/);assertNoPassword('supabase/functions/ssul_studio/index.ts');
+  const routes=JSON.parse(fs.readFileSync('_routes.json','utf8'));
+  for(const pattern of ['/studio*','/instagram*','/manuscript*','/api/*'])assert.ok(routes.include.includes(pattern),pattern);
 });
