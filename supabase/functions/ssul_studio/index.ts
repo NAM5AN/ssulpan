@@ -4,6 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { socialIssues, buildSocialRepairRequest, applySocialRepair, SOCIAL_FIELDS } from "./social-repair.mjs";
 import { createSourceBaseline, inspectSourcePreservation } from "./source-preservation.mjs";
 import {
+  constantTimeEqual,
+  createPasswordRecord,
+  issueStudioSession,
+  passwordDigest,
+  validStudioPassword,
+  verifyStudioSession,
+} from "./studio-auth.mjs";
+import {
   HttpError,
   id,
   cleanDraft,
@@ -205,6 +213,38 @@ async function saveStudioSetting(key: string, value: any) {
     .from("ssul_settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
   if (error) throw error;
+}
+
+async function initializeStudioAccess(password: unknown) {
+  if (!validStudioPassword(password)) fail(400, "비밀번호는 숫자 네 자리여야 해요.");
+  const record = await createPasswordRecord(password);
+  await saveStudioSetting("studio_access", {
+    version: 2,
+    ...record,
+    updatedAt: new Date().toISOString(),
+  });
+  return { configured: true };
+}
+
+async function loginStudio(password: unknown) {
+  const setting = await studioSetting("studio_access");
+  if (!validStudioPassword(password) || typeof setting.passwordDigest !== "string") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    fail(401, "비밀번호가 맞지 않아요.");
+  }
+  if (typeof setting.passwordSalt !== "string" || typeof setting.sessionVersion !== "string") fail(503, "제작실 비밀번호 설정을 확인해 주세요.");
+  const actual = await passwordDigest(password, setting.passwordSalt);
+  if (!constantTimeEqual(actual, setting.passwordDigest)) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    fail(401, "비밀번호가 맞지 않아요.");
+  }
+  return issueStudioSession(SERVICE_ROLE, setting.sessionVersion);
+}
+
+async function checkStudioSession(token: unknown) {
+  const setting = await studioSetting("studio_access");
+  const authenticated = typeof setting.sessionVersion === "string" && await verifyStudioSession(SERVICE_ROLE, typeof token === "string" ? token : "", setting.sessionVersion);
+  return { authenticated };
 }
 
 function bytesB64(bytes: Uint8Array) {
@@ -952,6 +992,9 @@ Deno.serve(async (request) => {
   try {
     const body = await request.json().catch(() => ({}));
     const action = String(body.action || "");
+    if (!["studio_access_login", "studio_access_verify"].includes(action) && !(await checkStudioSession(body.studioSession)).authenticated) {
+      fail(401, "제작실 로그인이 필요해요.");
+    }
     let result: any;
     if (action === "settings_get") result = await getSettings();
     else if (action === "settings_save") result = await saveSettings(body.key, body.model);
@@ -969,6 +1012,8 @@ Deno.serve(async (request) => {
     else if (action === "image_upload") result = await uploadImage(body);
     else if (action === "image_url") result = await imageUrl(String(body.id || ""));
     else if (action === "source_read") result = await readSource(String(body.url || ""));
+    else if (action === "studio_access_login") result = await loginStudio(body.password);
+    else if (action === "studio_access_verify") result = await checkStudioSession(body.token);
     else fail(404, "요청한 기능을 찾을 수 없어요.");
     return json({ ok: true, ...result });
   } catch (error) {

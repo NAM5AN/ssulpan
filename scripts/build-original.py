@@ -152,7 +152,7 @@ def main():
     (ROOT/'scripts/original-public-posts.json').write_text(json.dumps(seeds,ensure_ascii=False,indent=2))
     legacy=json.loads(subprocess.check_output(['node','-e',"const fs=require('fs'),vm=require('vm');const c={window:{}};vm.createContext(c);vm.runInContext(fs.readFileSync('data.js','utf8'),c);console.log(JSON.stringify(c.window.SSULPAN_DATA.SEEDS));"],cwd=ROOT,text=True))
     (OUT/'ssul-source-data.mjs').write_text('export default '+json.dumps({'originals':seeds,'previousSeeds':legacy},ensure_ascii=False)+';\n')
-    # Existing authenticated studio stays independent until its protected original HTML is supplied.
+    # Studio UI assets stay separate from the captured public community UI.
     for f in ['config.js','data.js','styles.css','studio.html','studio.js','instagram.html','instagram.js','manuscript.html','manuscript.js','robots.txt','_headers','_redirects','_routes.json','_worker.js']:
         if (ROOT/f).exists(): shutil.copyfile(ROOT/f,OUT/f)
     for f in ['ssul-render.mjs','ssul-community.mjs','studio-entry.js','studio-entry.css']:

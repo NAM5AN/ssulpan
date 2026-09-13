@@ -48,8 +48,12 @@ jobs:
           grep -q 'studio-shell.txt' dist/_worker.js
           grep -q "if(path==='/studio'||path==='/studio/')" dist/_worker.js
           ! grep -q 'STUDIO_TOKEN_HASH' dist/_worker.js
-          ! grep -q 'requireStudio' dist/_worker.js
           ! grep -q 'x-studio-token' dist/_worker.js
+          FORMER_STUDIO_PIN="$(python3 -c 'print("".join(map(chr,(50,56,53,52))))')"
+          ! grep -q "$FORMER_STUDIO_PIN" dist/_worker.js
+          grep -q "STUDIO_COOKIE='__Host-ssulpan_studio'" dist/_worker.js
+          grep -q "action:'studio_access_verify'" dist/_worker.js
+          grep -q 'HttpOnly; Secure; SameSite=Strict' dist/_worker.js
 
       - name: Verify original UI, full stories and backend adapter
         run: node --test tests/original-ui.test.mjs

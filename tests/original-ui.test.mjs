@@ -9,10 +9,12 @@ import * as socialRepair from '../supabase/functions/ssul_studio/social-repair.m
 import * as preservation from '../supabase/functions/ssul_studio/source-preservation.mjs';
 import * as writingStyle from '../supabase/functions/ssul_studio/writing-style.mjs';
 import * as studioCore from '../supabase/functions/ssul_studio/core.mjs';
+import * as studioAuth from '../supabase/functions/ssul_studio/studio-auth.mjs';
 import {listPage,articlePage} from '../dist/ssul-render.mjs';
 import T from '../dist/ssul-templates.mjs';
 import source from '../dist/ssul-source-data.mjs';
 import worker,{dbId,storyUrl} from '../dist/_worker.js';
+const TEST_STUDIO_COOKIE='__Host-ssulpan_studio=test-session';
 const rows=source.originals.map((p,i)=>({...p,date:`2026-09-${String(10-i).padStart(2,'0')}`,tags:['테스트']}));
 test('11 original CSS, JS, logo, images remain byte-identical',()=>{
  const report=JSON.parse(fs.readFileSync('dist/ui-provenance.json'));
@@ -91,34 +93,42 @@ test('legacy details redirect and the original reader view endpoint maps 001 to 
  }finally{globalThis.fetch=saved;}
 });
 
-test('studio and studio APIs open without login, cookie or access token',async()=>{
+test('studio pages and APIs require the server-issued HttpOnly session',async()=>{
  const saved=globalThis.fetch,calls=[];
  try{
   globalThis.fetch=async(url,options={})=>{
    const body=JSON.parse(options.body||'{}'),headers=new Headers(options.headers||{});
    calls.push({url:String(url),body,headers});
+   if(body.action==='studio_access_login')return body.password==='1234'?Response.json({ok:true,token:'test-session',expiresAt:Date.now()+3600000}):Response.json({ok:false,error:'비밀번호가 맞지 않아요.'},{status:401});
+   if(body.action==='studio_access_verify')return Response.json({ok:true,authenticated:body.token==='test-session'});
    if(body.action==='drafts_list')return Response.json({ok:true,drafts:[]});
    return Response.json({ok:true});
   };
   const env={ASSETS:{fetch:async()=>new Response('<button id="new-story">새 원고</button>',{headers:{'Content-Type':'text/html'}})}};
-  const studio=await worker.fetch(new Request('https://ssulpan.test/studio/'),env);
+  for(const path of ['/studio/','/studio.html','/studio/preview/','/instagram.html','/manuscript.html'])assert.equal((await worker.fetch(new Request('https://ssulpan.test'+path),env)).status,404,path);
+  assert.equal((await worker.fetch(new Request('https://ssulpan.test/api/drafts'),env)).status,401);
+  const login=await worker.fetch(new Request('https://ssulpan.test/api/studio-entry',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json'},body:JSON.stringify({password:'1234'})}),env);
+  assert.equal(login.status,200);
+  const setCookie=login.headers.get('Set-Cookie');
+  assert.match(setCookie,/^__Host-ssulpan_studio=test-session;/);assert.match(setCookie,/HttpOnly/);assert.match(setCookie,/Secure/);assert.match(setCookie,/SameSite=Strict/);
+  const studio=await worker.fetch(new Request('https://ssulpan.test/studio/',{headers:{Cookie:TEST_STUDIO_COOKIE}}),env);
   assert.equal(studio.status,200);
   const studioHtml=await studio.text();
   assert.ok(studioHtml.includes('new-story'));
   assert.ok(!studioHtml.includes('story-select'));
-  assert.equal(calls.length,0);
-  const drafts=await worker.fetch(new Request('https://ssulpan.test/api/drafts'),env);
+  const drafts=await worker.fetch(new Request('https://ssulpan.test/api/drafts',{headers:{Cookie:TEST_STUDIO_COOKIE}}),env);
   assert.equal(drafts.status,200);
   assert.deepEqual(await drafts.json(),{ok:true,drafts:[]});
-  assert.equal(calls.at(-1).headers.has('x-studio-token'),false);
-  await worker.fetch(new Request('https://ssulpan.test/api/settings',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json'},body:JSON.stringify({key:'sk-ant-test',model:'claude-sonnet-5'})}),env);
+  await worker.fetch(new Request('https://ssulpan.test/api/settings',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json',Cookie:TEST_STUDIO_COOKIE},body:JSON.stringify({key:'sk-ant-test',model:'claude-sonnet-5'})}),env);
   assert.equal(calls.at(-1).body.action,'settings_save');
+  assert.equal(calls.at(-1).body.studioSession,'test-session');
   assert.equal(calls.at(-1).body.model,'claude-sonnet-5');
-  await worker.fetch(new Request('https://ssulpan.test/api/jobs/00000000-0000-0000-0000-000000000099/candidate'),env);
+  await worker.fetch(new Request('https://ssulpan.test/api/jobs/00000000-0000-0000-0000-000000000099/candidate',{headers:{Cookie:TEST_STUDIO_COOKIE}}),env);
   assert.equal(calls.at(-1).body.action,'job_candidate');
   const legacy=await worker.fetch(new Request('https://ssulpan.test/studio/access/abcdefghijklmnopqrstuvwxyz'),env);
-  assert.equal(legacy.status,302);
-  assert.equal(legacy.headers.get('location'),'https://ssulpan.test/studio/');
+  assert.equal(legacy.status,404);
+  const logout=await worker.fetch(new Request('https://ssulpan.test/api/studio-logout',{method:'POST',headers:{Origin:'https://ssulpan.test'}}),env);
+  assert.match(logout.headers.get('Set-Cookie'),/Max-Age=0/);
  }finally{globalThis.fetch=saved;}
 });
 test('cross-origin pages cannot silently mutate the shared studio',async()=>{
@@ -132,8 +142,8 @@ test('cross-origin pages cannot silently mutate the shared studio',async()=>{
 test('studio job responses stream start, progress and the complete proposal metadata',async()=>{
  const saved=globalThis.fetch;
  try{
-  globalThis.fetch=async()=>Response.json({ok:true,id:'job-1',result:{title:'결과'},usage:[{input_tokens:1}],model:'claude-sonnet-5',calls:1,promptUsage:null,promptRevision:3,baseData:'{"title":"hash"}',target:'before'});
-  const response=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json'},body:JSON.stringify({jobId:'job-1',draftId:'draft-1',action:'generate',data:{}})}),{});
+  globalThis.fetch=async(url,options)=>JSON.parse(options.body).action==='studio_access_verify'?Response.json({ok:true,authenticated:true}):Response.json({ok:true,id:'job-1',result:{title:'결과'},usage:[{input_tokens:1}],model:'claude-sonnet-5',calls:1,promptUsage:null,promptRevision:3,baseData:'{"title":"hash"}',target:'before'});
+  const response=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json',Cookie:TEST_STUDIO_COOKIE},body:JSON.stringify({jobId:'job-1',draftId:'draft-1',action:'generate',data:{}})}),{});
   assert.equal(response.headers.get('content-type'),'application/x-ndjson; charset=utf-8');
   const events=(await response.text()).trim().split('\n').map(JSON.parse);
   assert.equal(events[0].type,'started');
@@ -148,15 +158,15 @@ test('all studio buttons reach the real Edge dispatcher and job runner through t
  const saved=globalThis.fetch,calls=[];
  const query=()=>{const value={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert','update'])value[method]=()=>value;return value;};
  let serve;
- const context=vm.createContext({...studioCore,...generationSupport,...writingStyle,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ const context=vm.createContext({...studioCore,...generationSupport,...writingStyle,...studioAuth,verifyStudioSession:async()=>true,Response,Request,URL,TextEncoder,TextDecoder,crypto:crypto.webcrypto,console,Error,record:input=>calls.push(input),createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
  const source=fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'');
  vm.runInContext(stripTypeScriptTypes(source),context);
  // Provider and storage are mocked; HTTP routing, validation and runJob are real.
- vm.runInContext(`credentials=async()=>({key:'test-key',model:'test-model'});callClaude=async(action,d,target,instruction,jobId,scope)=>{record({action,target,instruction,scope,sourceText:d.sourceText});return {result:{text:'결과'},calls:1,usage:[],model:'test-model',baseData:'base'};};`,context);
+ vm.runInContext(`credentials=async()=>({key:'test-key',model:'test-model'});checkStudioSession=async()=>({authenticated:true});callClaude=async(action,d,target,instruction,jobId,scope)=>{record({action,target,instruction,scope,sourceText:d.sourceText});return {result:{text:'결과'},calls:1,usage:[],model:'test-model',baseData:'base'};};`,context);
  try {
-  globalThis.fetch=async(url,options)=>serve(new Request(url,options));
+  globalThis.fetch=async(url,options)=>JSON.parse(options.body).action==='studio_access_verify'?Response.json({ok:true,authenticated:true}):serve(new Request(url,options));
   for(const action of ['generate','rewrite','extract','social','review','split','prompt']){
-   const response=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:'route-'+action,draftId:'draft-route',action,target:'before',scope:action==='rewrite'?{start:0,end:2}:undefined,instruction:'요청 반영',data:{sourceText:'원문 소재',beforeContent:'앞부분',afterContent:'뒷부분',imageIds:['image-1']}})}),{});
+   const response=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{'Content-Type':'application/json',Cookie:TEST_STUDIO_COOKIE},body:JSON.stringify({jobId:'route-'+action,draftId:'draft-route',action,target:'before',scope:action==='rewrite'?{start:0,end:2}:undefined,instruction:'요청 반영',data:{sourceText:'원문 소재',beforeContent:'앞부분',afterContent:'뒷부분',imageIds:['image-1']}})}),{});
    const events=(await response.text()).trim().split('\n').map(JSON.parse);
    assert.ok(events.some(e=>e.type==='done'),JSON.stringify({action,events}));
    assert.equal(calls.at(-1).action,action);
@@ -269,7 +279,7 @@ test('strict provider schema removes unsupported constraints without weakening l
 function edgeHarness(provider){
  let serve;const updates=[];
  const query=()=>{const q={then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject)},maybeSingle:async()=>({data:null,error:null})};for(const method of ['select','eq','gte','limit','insert'])q[method]=()=>q;q.update=value=>{updates.push(structuredClone(value));return q;};return q;};
- const context=vm.createContext({...studioCore,...generationSupport,...socialRepair,...preservation,...writingStyle,Response,Request,URL,TextEncoder,TextDecoder,AbortSignal,crypto:crypto.webcrypto,console,Error,fetch:provider,createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
+ const context=vm.createContext({...studioCore,...generationSupport,...socialRepair,...preservation,...writingStyle,...studioAuth,Response,Request,URL,TextEncoder,TextDecoder,AbortSignal,crypto:crypto.webcrypto,console,Error,fetch:provider,createClient:()=>({from:query}),Deno:{env:{get:()=>''},serve:fn=>{serve=fn;}}});
  vm.runInContext(stripTypeScriptTypes(fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8').replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm,'')),context);
  vm.runInContext(`credentials=async()=>({key:'test-key',model:'test-model'});getWritingPrompt=async()=>({prompt:'',revision:1});putArtifact=async()=>{};`,context);
  return {context,updates,serve};
@@ -347,10 +357,10 @@ test('provider failure is saved with exact HTTP error and redacted diagnostics',
 test('worker passes diagnostics on failed streams and exposes history diagnostics',async()=>{
  const saved=globalThis.fetch;const diagnostics={jobId:'job-1',stage:'validate',error:{code:'RESULT_SCHEMA_INVALID',fields:{missing:['gateLine']}}};
  try{
-  globalThis.fetch=async(url,options)=>{const payload=JSON.parse(options.body);if(payload.action==='job_diagnostics')return Response.json({ok:true,diagnostics});return Response.json({ok:false,error:'누락: gateLine',diagnostics},{status:502});};
-  const r=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',body:JSON.stringify({jobId:'job-1',action:'generate',data:{}})}),{});
+  globalThis.fetch=async(url,options)=>{const payload=JSON.parse(options.body);if(payload.action==='studio_access_verify')return Response.json({ok:true,authenticated:true});if(payload.action==='job_diagnostics')return Response.json({ok:true,diagnostics});return Response.json({ok:false,error:'누락: gateLine',diagnostics},{status:502});};
+  const r=await worker.fetch(new Request('https://ssulpan.test/api/jobs',{method:'POST',headers:{Cookie:TEST_STUDIO_COOKIE},body:JSON.stringify({jobId:'job-1',action:'generate',data:{}})}),{});
   const failed=(await r.text()).trim().split('\n').map(JSON.parse).find(e=>e.type==='failed');assert.deepEqual(failed.diagnostics,diagnostics);
-  const history=await worker.fetch(new Request('https://ssulpan.test/api/jobs/job-1/diagnostics'),{});assert.deepEqual((await history.json()).diagnostics,diagnostics);
+  const history=await worker.fetch(new Request('https://ssulpan.test/api/jobs/job-1/diagnostics',{headers:{Cookie:TEST_STUDIO_COOKIE}}),{});assert.deepEqual((await history.json()).diagnostics,diagnostics);
  }finally{globalThis.fetch=saved;}
 });
 
@@ -402,14 +412,36 @@ test('ending ratio excludes dialogue and quotations and honors only an explicit 
  const exempt=writingStyle.analyzeNarrativeEndings(narrative,{tone:'담담한 문어체'});
  assert.equal(exempt.exempt,true);assert.equal(exempt.warning,false);
 });
-test('search entry accepts only the correct password and never caches the result',async()=>{
+test('search entry delegates password comparison to the server and never embeds the password',async()=>{
+ const saved=globalThis.fetch;
  const call=(body,method='POST',origin='https://ssulpan.test')=>worker.fetch(new Request('https://ssulpan.test/api/studio-entry',{method,headers:{Origin:origin,'Content-Type':'application/json'},...(method==='POST'?{body:JSON.stringify(body)}:{})}),{});
- for(const password of ['', '0000', 2854, null])assert.equal((await call({password})).status,401);
- const valid=await call({password:'2854'});
- assert.equal(valid.status,200);assert.equal(valid.headers.get('Cache-Control'),'no-store');
- assert.deepEqual(await valid.json(),{ok:true,url:'/studio/'});
- assert.equal((await call({},'GET')).status,405);
- assert.equal((await call({password:'2854'},'POST','https://other.test')).status,403);
- assert.ok(listPage(rows,1,{}).includes('/studio-entry.js'));
- assert.ok(articlePage(rows[0],rows).includes('/studio-entry.js'));
+ try {
+  globalThis.fetch=async(url,options)=>{const body=JSON.parse(options.body);return body.password==='1234'?Response.json({ok:true,token:'test-session',expiresAt:Date.now()+3600000}):Response.json({ok:false,error:'비밀번호가 맞지 않아요.'},{status:401});};
+  for(const password of ['', '0000', 1234, null])assert.equal((await call({password})).status,401);
+  const valid=await call({password:'1234'});
+  assert.equal(valid.status,200);assert.equal(valid.headers.get('Cache-Control'),'no-store');
+  assert.deepEqual(await valid.json(),{ok:true,url:'/studio/'});
+  assert.equal((await call({},'GET')).status,405);
+  assert.equal((await call({password:'1234'},'POST','https://other.test')).status,403);
+  assertNoPassword('_worker.js');assertNoPassword('studio-entry.js');assertNoPassword('ssul-render.mjs');
+  assert.ok(listPage(rows,1,{}).includes('/studio-entry.js'));
+  assert.ok(articlePage(rows[0],rows).includes('/studio-entry.js'));
+ }finally{globalThis.fetch=saved;}
+});
+
+function assertNoPassword(path){const formerPin=[50,56,53,52].map(String.fromCharCode).join('');assert.ok(!fs.readFileSync(path,'utf8').includes(formerPin),`${path} contains the former password`)}
+
+test('studio session signatures reject tampering and expiration',async()=>{
+ const now=Date.now(),version='abcdefghijklmnop',issued=await studioAuth.issueStudioSession('server-only-secret',version,now);
+ assert.equal(await studioAuth.verifyStudioSession('server-only-secret',issued.token,version,now+1),true);
+ assert.equal(await studioAuth.verifyStudioSession('another-secret',issued.token,version,now+1),false);
+ assert.equal(await studioAuth.verifyStudioSession('server-only-secret',issued.token,'ponmlkjihgfedcba',now+1),false);
+ assert.equal(await studioAuth.verifyStudioSession('server-only-secret',issued.token.replace(/.$/,'x'),version,now+1),false);
+ assert.equal(await studioAuth.verifyStudioSession('server-only-secret',issued.token,version,issued.expiresAt),false);
+  assert.equal(studioAuth.validStudioPassword('1234'),true);assert.equal(studioAuth.validStudioPassword('12345'),false);
+  const record=await studioAuth.createPasswordRecord('1234');
+  assert.equal(await studioAuth.passwordDigest('1234',record.passwordSalt),record.passwordDigest);
+  assert.notEqual(await studioAuth.passwordDigest('0000',record.passwordSalt),record.passwordDigest);
+  const edgeSource=fs.readFileSync('supabase/functions/ssul_studio/index.ts','utf8');
+  assert.match(edgeSource,/studio_access_verify/);assert.match(edgeSource,/checkStudioSession\(body\.studioSession\)/);assertNoPassword('supabase/functions/ssul_studio/index.ts');
 });
