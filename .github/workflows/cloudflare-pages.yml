@@ -54,6 +54,8 @@ jobs:
           grep -q "STUDIO_COOKIE='__Host-ssulpan_studio'" dist/_worker.js
           grep -q "action:'studio_access_verify'" dist/_worker.js
           grep -q 'HttpOnly; Secure; SameSite=Strict' dist/_worker.js
+          grep -Fq '"/instagram*"' dist/_routes.json
+          grep -Fq '"/manuscript*"' dist/_routes.json
 
       - name: Verify original UI, full stories and backend adapter
         run: node --test tests/original-ui.test.mjs
