@@ -1,5 +1,5 @@
 // Response contracts and diagnostics shared by the server and regression tests.
-export const GENERATION_RELEASE='2026-09-13-colloquial-period-normalization-1';
+export const GENERATION_RELEASE='2026-09-13-source-voice-policy-1';
 const toolSerializationPattern = /<\/?(?:storyBible|gateLine|beforeContent|afterContent|title|titles|category|teaser|hook|coverDetail|caption|hashtags|imageText)\s*>|<parameter\s+name\s*=|<\/?antml[\s:：._-]*parameter\b[^>]*>/iu;
 export function hasToolSerializationArtifact(value){return typeof value==='string'&&toolSerializationPattern.test(value);}
 export function strictSchema(schema){
