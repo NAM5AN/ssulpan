@@ -1,0 +1,11 @@
+.studio-entry { width: min(360px, calc(100% - 40px)); box-sizing: border-box; padding: 28px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #000; }
+.studio-entry::backdrop { background: rgb(0 0 0 / 45%); }
+.studio-entry h2 { margin: 0 0 24px; font-size: 22px; }
+.studio-entry label { display: block; margin-bottom: 8px; font-weight: 600; }
+.studio-entry input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #aaa; border-radius: 4px; font: inherit; font-size: 20px; letter-spacing: 6px; }
+.studio-entry-error { min-height: 1.5em; margin: 10px 0 18px; font-size: 14px; color: #b42318; }
+.studio-entry-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.studio-entry button { padding: 10px 20px; border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #000; font: inherit; cursor: pointer; }
+.studio-entry button[type="submit"] { border-color: #fd582b; background: #fd582b; font-weight: 700; }
+.studio-entry button:disabled { opacity: .55; cursor: wait; }
+.studio-entry :focus-visible { outline: 2px solid #000; outline-offset: 3px; }

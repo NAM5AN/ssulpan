@@ -19,6 +19,12 @@ async function studioCall(payload){const response=await fetch(STUDIO_API,{method
 async function requestBody(request){try{return await request.json()}catch{return{}}}
 function arrayB64(ab){const a=new Uint8Array(ab);let s='';for(let i=0;i<a.length;i+=32768)s+=String.fromCharCode(...a.subarray(i,i+32768));return btoa(s)}
 async function studioApi(request,path){const method=request.method,u=new URL(request.url);
+  if(path==='/api/studio-entry'){
+    if(method!=='POST')return json({error:'POST 요청만 사용할 수 있어요.'},405,{Allow:'POST'});
+    const body=await requestBody(request);
+    if(body.password!=='2854')return json({error:'비밀번호가 맞지 않아요.'},401);
+    return json({ok:true,url:'/studio/'});
+  }
   if(path==='/api/settings'){if(method==='GET')return json(await studioCall({action:'settings_get'}));if(method==='POST'){const b=await requestBody(request);return json(await studioCall({action:'settings_save',key:b.key,model:b.model}));}}
   if(path==='/api/writing-prompt'){if(method==='GET')return json(await studioCall({action:'writing_prompt_get'}));if(method==='PUT'){const b=await requestBody(request);return json(await studioCall({action:'writing_prompt_save',prompt:b.prompt,revision:b.revision}));}}
   if(path==='/api/drafts'&&method==='GET')return json(await studioCall({action:'drafts_list'}));

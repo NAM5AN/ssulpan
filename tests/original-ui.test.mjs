@@ -402,3 +402,14 @@ test('ending ratio excludes dialogue and quotations and honors only an explicit 
  const exempt=writingStyle.analyzeNarrativeEndings(narrative,{tone:'담담한 문어체'});
  assert.equal(exempt.exempt,true);assert.equal(exempt.warning,false);
 });
+test('search entry accepts only the correct password and never caches the result',async()=>{
+ const call=(body,method='POST',origin='https://ssulpan.test')=>worker.fetch(new Request('https://ssulpan.test/api/studio-entry',{method,headers:{Origin:origin,'Content-Type':'application/json'},...(method==='POST'?{body:JSON.stringify(body)}:{})}),{});
+ for(const password of ['', '0000', 2854, null])assert.equal((await call({password})).status,401);
+ const valid=await call({password:'2854'});
+ assert.equal(valid.status,200);assert.equal(valid.headers.get('Cache-Control'),'no-store');
+ assert.deepEqual(await valid.json(),{ok:true,url:'/studio/'});
+ assert.equal((await call({},'GET')).status,405);
+ assert.equal((await call({password:'2854'},'POST','https://other.test')).status,403);
+ assert.ok(listPage(rows,1,{}).includes('/studio-entry.js'));
+ assert.ok(articlePage(rows[0],rows).includes('/studio-entry.js'));
+});
