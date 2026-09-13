@@ -1,5 +1,5 @@
 import {GENERATION_RELEASE,strictSchema,completeMetadata,fieldReport,failureInfo,safeMessage} from "./generation-support.mjs";
-import {analyzeNarrativeEndings} from "./writing-style.mjs";
+import {analyzeNarrativeEndings,normalizeColloquialPeriods} from "./writing-style.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { socialIssues, buildSocialRepairRequest, applySocialRepair, SOCIAL_FIELDS } from "./social-repair.mjs";
 import { createSourceBaseline, inspectSourcePreservation } from "./source-preservation.mjs";
@@ -53,6 +53,69 @@ function recordWarning(trace: any, code: string, stage: string, message: string,
   if (!trace) return;
   trace.warnings ||= [];
   trace.warnings.push({ code, stage, message: safeMessage(message), ...details });
+}
+
+const PERIOD_NORMALIZED_FIELDS = ["title", "teaser", "beforeContent", "afterContent", "gateLine", "hook", "coverDetail", "caption"];
+
+function normalizeResultPeriods(action: string, result: any, draft: any, target: string | undefined, scope: any = null) {
+  const tone = draft?.options?.tone || "";
+  const output = result && typeof result === "object" ? { ...result } : result;
+  const report: any = {
+    checker: "colloquial-terminal-period-v1",
+    tone,
+    exempt: false,
+    removedCount: 0,
+    fields: {},
+    scope: scope || null,
+  };
+  const normalizeField = (key: string) => {
+    if (!output || typeof output[key] !== "string") return;
+    const normalized = normalizeColloquialPeriods(output[key], { tone });
+    output[key] = normalized.text;
+    report.exempt = normalized.exempt;
+    report.removedCount += normalized.removedCount;
+    report.fields[key] = normalized.removedCount;
+  };
+
+  if (["generate", "social"].includes(action)) {
+    for (const key of PERIOD_NORMALIZED_FIELDS) normalizeField(key);
+    if (Array.isArray(output?.titles)) {
+      output.titles = output.titles.map((value: any) => {
+        if (typeof value !== "string") return value;
+        const normalized = normalizeColloquialPeriods(value, { tone });
+        report.exempt = normalized.exempt;
+        report.removedCount += normalized.removedCount;
+        report.fields.titles = (report.fields.titles || 0) + normalized.removedCount;
+        return normalized.text;
+      });
+    }
+    return { result: output, report };
+  }
+
+  if (action !== "rewrite" || !output || typeof output.text !== "string") {
+    return { result: output, report };
+  }
+  if (!scope) {
+    normalizeField("text");
+    return { result: output, report };
+  }
+
+  const original = String(draft?.[target === "before" ? "beforeContent" : "afterContent"] || "");
+  const prefix = original.slice(0, scope.start);
+  const suffix = original.slice(scope.end);
+  if (!output.text.startsWith(prefix) || !output.text.endsWith(suffix) || output.text.length < prefix.length + suffix.length) {
+    report.skipped = "rewrite_scope_not_preserved";
+    return { result: output, report };
+  }
+  const selectedEnd = output.text.length - suffix.length;
+  const selected = output.text.slice(prefix.length, selectedEnd);
+  const normalized = normalizeColloquialPeriods(selected, { tone });
+  output.text = `${prefix}${normalized.text}${suffix}`;
+  report.exempt = normalized.exempt;
+  report.removedCount = normalized.removedCount;
+  report.fields.text = normalized.removedCount;
+  report.normalizedRange = { start: prefix.length, end: selectedEnd };
+  return { result: output, report };
 }
 
 function recordInspectionFailure(trace: any, name: string, label: string, stage: string, error: any, details: any = {}) {
@@ -639,6 +702,16 @@ async function callClaude(action: string, initialDraft: any, target: string, ins
     }
     await checkpoint(trace,"validate");
     result = inspectResult(action, raw, d, target, trace).result;
+    if (["generate", "rewrite", "social"].includes(action)) {
+      try {
+        const normalized = normalizeResultPeriods(action, result, d, target, scope);
+        result = normalized.result;
+        if (trace) trace.periodNormalization = normalized.report;
+        recordInspection(trace,"period_normalization","문장 끝 단일 마침표 정리",true,{result:normalized.report});
+      } catch(error) {
+        recordInspectionFailure(trace,"period_normalization_failed","문장 끝 단일 마침표 정리","period_normalization",error);
+      }
+    }
     if (["generate", "rewrite"].includes(action) && trace) {
       try {
         const styleText = action === "generate" ? `${result.beforeContent}\n\n${result.afterContent}` : result.text;

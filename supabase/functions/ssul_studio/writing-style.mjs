@@ -42,6 +42,37 @@ export function isExplicitLiteraryTone(tone) {
   return /문어|서술체|평서체|소설체/u.test(String(tone || ''));
 }
 
+const terminalSinglePeriodPattern = /(?:(?<!\.)\.(?!\.)|[。．])(?=(?:["'”’」』)\]}〉》】])*(?:\s|$|[\p{Script=Hangul}]))/gu;
+
+// Default community copy does not use a single sentence-ending full stop.
+// Keep ellipses, decimal points, domains and filename extensions intact.
+// An explicitly literary tone is the only exemption.
+export function normalizeColloquialPeriods(text, { tone = '' } = {}) {
+  const value = String(text ?? '');
+  const exempt = isExplicitLiteraryTone(tone);
+  if (!value || exempt) {
+    return {
+      checker: 'colloquial-terminal-period-v1',
+      tone: String(tone || ''),
+      exempt,
+      removedCount: 0,
+      text: value,
+    };
+  }
+  let removedCount = 0;
+  const normalized = value.replace(terminalSinglePeriodPattern, () => {
+    removedCount += 1;
+    return '';
+  });
+  return {
+    checker: 'colloquial-terminal-period-v1',
+    tone: String(tone || ''),
+    exempt,
+    removedCount,
+    text: normalized,
+  };
+}
+
 export function analyzeNarrativeEndings(text, { tone = '' } = {}) {
   const masked = maskQuotedAndDialogue(text);
   const sentences = masked.narrative

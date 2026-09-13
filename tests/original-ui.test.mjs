@@ -282,8 +282,9 @@ test('real generation pipeline repairs the missing field and records request IDs
   calls++;return Response.json({id:'msg-'+calls,stop_reason:'tool_use',usage:{input_tokens:5,output_tokens:6},content:[{type:'tool_use',name:'deliver_result',input:calls===1?candidate:{gateLine:'쪽지에는 뭐라고 적혀 있었을까.'}}]},{headers:{'request-id':'req-'+calls}});
  });
  const out=await vm.runInContext(`runJob({jobId:'pipeline-job',draftId:'pipeline-draft',action:'generate',data:{sourceText:'여행 중 잃어버린 인형. 공식 계정이 새 인형과 쪽지를 보내왔다.'}})`,context);
- assert.equal(calls,2);assert.equal(out.result.beforeContent,candidate.beforeContent);assert.equal(out.result.afterContent,candidate.afterContent);
+ assert.equal(calls,2);assert.equal(out.result.beforeContent,writingStyle.normalizeColloquialPeriods(candidate.beforeContent,{tone:'친구에게 말하듯'}).text);assert.equal(out.result.afterContent,writingStyle.normalizeColloquialPeriods(candidate.afterContent,{tone:'친구에게 말하듯'}).text);
  assert.equal(out.diagnostics.stage,'completed');assert.equal(out.diagnostics.repairs[0].fields[0],'gateLine');assert.equal(out.diagnostics.providerCalls[0].fields.missing[0],'gateLine');assert.equal(out.diagnostics.providerCalls[1].requestId,'req-2');assert.equal(out.diagnostics.providerCalls[0].stopReason,'tool_use');
+ assert.ok(out.diagnostics.periodNormalization.removedCount>0);assert.ok(out.diagnostics.inspections.some(item=>item.name==='period_normalization'&&item.status==='passed'));
  assert.ok(updates.some(v=>v.status==='done'));assert.ok(!updates.some(v=>Object.hasOwn(v,'data')));
 });
 
@@ -295,7 +296,7 @@ test('metadata repair and result inspection failures keep the Claude body and fi
   return Response.json({error:{type:'api_error',message:'repair unavailable'}},{status:500,headers:{'request-id':'req-soft-2'}});
  });
  const out=await vm.runInContext(`runJob({jobId:'soft-validation-job',draftId:'soft-validation-draft',action:'generate',data:{notes:'여행 중 인형을 잃어버린 소재'}})`,context);
- assert.equal(calls,2);assert.equal(out.result.beforeContent,candidate.beforeContent);assert.equal(out.result.afterContent,candidate.afterContent);assert.equal(out.result.gateLine,'');
+ assert.equal(calls,2);assert.equal(out.result.beforeContent,writingStyle.normalizeColloquialPeriods(candidate.beforeContent,{tone:'친구에게 말하듯'}).text);assert.equal(out.result.afterContent,writingStyle.normalizeColloquialPeriods(candidate.afterContent,{tone:'친구에게 말하듯'}).text);assert.equal(out.result.gateLine,'');
  assert.equal(out.diagnostics.status,'done');assert.equal(out.diagnostics.outcome,'completed_with_warnings');assert.equal(out.diagnostics.validation.passed,false);assert.equal(out.diagnostics.validationFallback,true);
  assert.ok(out.diagnostics.inspections.some(item=>item.name==='metadata_repair_failed'&&item.status==='review'));
  assert.ok(out.diagnostics.inspections.some(item=>item.name==='result_schema'&&item.status==='review'));
@@ -322,6 +323,18 @@ test('rewrite scope mismatch is a report-only warning and leaves the proposal av
  assert.equal(out.result.text,'완전히 다른 본문');assert.equal(out.diagnostics.status,'done');
  assert.ok(out.diagnostics.warnings.some(item=>item.code==='REWRITE_OUTSIDE_SCOPE'));
  assert.ok(updates.some(value=>value.status==='done'));assert.ok(!updates.some(value=>value.status==='failed'));
+});
+
+test('scoped rewrite removes periods only inside the selected range',async()=>{
+ const original='앞 문장.\n바꿀 문장.\n뒤 문장.';
+ const prefix='앞 문장.\n',selected='바꿀 문장.',suffix='\n뒤 문장.';
+ const proposed=`${prefix}새 문장임.${suffix}`;
+ const {context}=edgeHarness(async()=>Response.json({id:'msg-scoped-period',stop_reason:'tool_use',usage:{input_tokens:2,output_tokens:3},content:[{type:'tool_use',name:'deliver_result',input:{text:proposed}}]}));
+ const out=await vm.runInContext(`runJob({jobId:'scoped-period-job',draftId:'scoped-period-draft',action:'rewrite',target:'before',scope:{start:${prefix.length},end:${prefix.length+selected.length}},data:{beforeContent:${JSON.stringify(original)},afterContent:'뒷부분'}})`,context);
+ assert.equal(out.result.text,`${prefix}새 문장임${suffix}`);
+ assert.equal(out.result.text.slice(0,prefix.length),prefix);
+ assert.equal(out.result.text.slice(-suffix.length),suffix);
+ assert.equal(out.diagnostics.periodNormalization.removedCount,1);
 });
 
 test('provider failure is saved with exact HTTP error and redacted diagnostics',async()=>{
@@ -352,10 +365,21 @@ test('the uploaded master prompt keeps colloquial eumseongche defaults and expli
  assert.match(studioCore.masterPrompt,/`options\.tone`에 다른 말투가 지정되면 그 말투의 구어 종결/);
  assert.match(studioCore.masterPrompt,/`options\.tone`이 명시적으로 격식체나 문어체를 요구한 경우에만 허용/);
  assert.match(studioCore.masterPrompt,/도구 스키마 > 가장 중요한 문체 원칙 > `action`/);
+ assert.match(studioCore.masterPrompt,/단일 마침표는 0개가 기준이다/);
+ assert.match(studioCore.masterPrompt,/따옴표 안 대사에도 똑같이 적용/);
+ assert.doesNotMatch(studioCore.masterPrompt,/전부 마침표를 찍거나 전부 안 찍으면 둘 다 어색하다/);
  assert.equal(studioCore.normalizeWritingOptions({tone:'음슴체'}).tone,'음슴체');
  assert.equal(studioCore.normalizeWritingOptions({tone:'존댓말 구어체'}).tone,'존댓말 구어체');
  assert.equal(studioCore.normalizeWritingOptions({tone:'담담한 문어체'}).tone,'담담한 문어체');
  assert.equal(studioCore.normalizeWritingOptions({}).tone,'친구에게 말하듯');
+});
+
+test('single terminal periods are removed without damaging ellipses or embedded dots',()=>{
+ const input='첫 문장임. 다음 문장임.\n"진짜 왔어."\n잠깐.. 아직...\n값은 3.14고 example.com이랑 photo.jpg를 봤음.';
+ const normalized=writingStyle.normalizeColloquialPeriods(input,{tone:'음슴체'});
+ assert.equal(normalized.removedCount,4);
+ assert.equal(normalized.text,'첫 문장임 다음 문장임\n"진짜 왔어"\n잠깐.. 아직...\n값은 3.14고 example.com이랑 photo.jpg를 봤음');
+ assert.equal(writingStyle.normalizeColloquialPeriods('문어체 문장이다.',{tone:'담담한 문어체'}).text,'문어체 문장이다.');
 });
 
 test('literary ending ratio detects written narration including contracted past endings',()=>{

@@ -4,6 +4,12 @@
 
 Claude가 `deliver_result` 객체를 하나라도 반환하면 이후 서버 검사는 결과를 폐기하거나 작업을 실패시키지 않는다. 형식 검사, 필수 부가 항목 보정, 소셜 문구 보정, 부분 수정 범위, 문체, 원문 보존 검사는 각각 `diagnostics.inspections[]`에 `passed` 또는 `review`로 기록한다. 확인이 필요한 내용은 `diagnostics.warnings[]`에도 코드·단계·메시지를 남기고 작업 자체는 `status=done`, `outcome=completed_with_warnings`로 저장한다.
 
+## 문장 끝 단일 마침표 정리
+
+기본 구어체·음슴체 결과는 스키마 검사 뒤 서버에서 한 번 더 정리한다. `title`, `titles`, `teaser`, `beforeContent`, `afterContent`, `gateLine`, `hook`, `coverDetail`, `caption`의 문장 끝 단일 마침표를 제거하며, `social` 재생성에도 같은 규칙을 적용한다. 부분 수정은 전체 대상 또는 사용자가 선택한 구간 안에서만 정리하고 선택 밖의 원문은 건드리지 않는다.
+
+`options.tone`이 문어체·서술체·평서체·소설체를 명시하면 이 후처리를 건너뛴다. `..`, `...`, URL·도메인·소수·파일 확장자 안의 점은 보존한다. 결과는 `diagnostics.periodNormalization`과 `diagnostics.inspections[name=period_normalization]`에 필드별 제거 개수와 함께 기록하며, 정리 단계 자체가 작업을 실패시키지는 않는다.
+
 형식 검사를 통과하지 못한 객체는 `bestEffortResult`로 화면에 표시 가능한 13개 필드 형태로 바꾼다. 문자열로 실제 반환된 내용은 그대로 보이고, 반환되지 않았거나 타입이 잘못된 필드는 빈 값으로 표시한다. 원본 객체는 비공개 후보 기록에 별도로 남는다. 검사 경고가 있는 결과를 원고에 반영할 때는 누락·빈 값·기술 한도 초과 필드로 현재 원고를 덮어쓰지 않는다. 결과는 계속 자동 적용·자동 게시하지 않는다.
 
 다음 경우만 실제 실패로 유지한다.
