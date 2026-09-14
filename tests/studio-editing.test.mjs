@@ -7,10 +7,10 @@ import {cleanDraft,publicPost} from '../supabase/functions/ssul_studio/core.mjs'
 import {articlePage} from '../dist/ssul-render.mjs';
 
 const initial=cleanDraft({title:'편집 테스트',beforeContent:'첫 문단\n\n둘째 문단',afterContent:'셋째 문단\n\n마지막 문단',gateLine:'계속 읽기',fadeHeight:180});
-async function editor(){
-  const elements=new Map(),timers=new Map(),requests=[],backups=new Map();let timerId=0,delaySave=null,published=null;
-  let stored={id:'editor-test',revision:1,updatedAt:1,data:structuredClone(initial)};
-  function element(id){if(!elements.has(id))elements.set(id,{id,value:'',textContent:'',disabled:false,hidden:false,children:[],selectionStart:0,selectionEnd:0,events:{},contentWindow:{postMessage(){}},addEventListener(name,fn){this.events[name]=fn;},setAttribute(){},replaceChildren(...items){this.children=items;},append(...items){this.children.push(...items);},focus(){},scrollIntoView(){},setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b;}});return elements.get(id);}
+async function editor(seed=initial){
+  const elements=new Map(),timers=new Map(),requests=[],backups=new Map(),windowEvents=new Map();let timerId=0,delaySave=null,published=null;
+  let stored={id:'editor-test',revision:1,updatedAt:1,data:structuredClone(seed)};
+  function element(id){if(!elements.has(id)){const attributes=new Map();elements.set(id,{id,value:'',textContent:'',disabled:false,hidden:false,children:[],selectionStart:0,selectionEnd:0,events:{},dataset:{},classList:{add(){},remove(){},toggle(){}},contentWindow:{postMessage(){}},addEventListener(name,fn){this.events[name]=fn;},setAttribute(name,value){attributes.set(name,String(value));},getAttribute:name=>attributes.has(name)?attributes.get(name):null,querySelectorAll(){return[];},replaceChildren(...items){this.children=items;},append(...items){this.children.push(...items);},focus(){},scrollIntoView(){},setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b;}});}return elements.get(id);}
   const markup=fs.readFileSync('studio.html','utf8');for(const match of markup.matchAll(/\bid="([^"]+)"/g))element(match[1]);
   const controls=[...markup.matchAll(/<(input|textarea|select|button)\b[^>]*id="([^"]+)"/g)].map(m=>element(m[2]));
   const document={getElementById:element,querySelectorAll:selector=>selector.startsWith('.studio-wrap')?controls:[],createElement:()=>element('created-'+elements.size),body:{append(){}}};
@@ -30,22 +30,19 @@ async function editor(){
     if(path==='/api/ssul_posts?id=editor-test')return Response.json({post:published});
     throw new Error('Unexpected request: '+path);
   };
-  const context=vm.createContext({document,location,fetch,URL,URLSearchParams,Response,TextEncoder,crypto:webcrypto,console,window:{history:{replaceState(){}},addEventListener(){}},localStorage:{setItem:(k,v)=>backups.set(k,v),removeItem:k=>backups.delete(k),getItem:k=>backups.get(k)||null},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id)});
+  const context=vm.createContext({document,location,fetch,URL,URLSearchParams,Response,TextEncoder,crypto:webcrypto,console,window:{history:{replaceState(){}},addEventListener(name,fn){windowEvents.set(name,fn);}},localStorage:{setItem:(k,v)=>backups.set(k,v),removeItem:k=>backups.delete(k),getItem:k=>backups.get(k)||null},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id)});
   vm.runInContext(fs.readFileSync('studio.js','utf8'),context);
   for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(element('before-content').value,initial.beforeContent);
-  return {element,requests,get stored(){return stored;},get published(){return published;},delayNextSave(promise){delaySave=promise;},input(id,value){const el=element(id);assert.equal(el.disabled,false);el.value=value;el.events.input?.();},async flush(){for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));}};
+  assert.equal(element('before-content').value,seed.beforeContent);
+  return {element,requests,get stored(){return stored;},get published(){return published;},delayNextSave(promise){delaySave=promise;},windowEvent(name,event){return windowEvents.get(name)?.(event);},input(id,value){const el=element(id);assert.equal(el.disabled,false);el.value=value;el.events.input?.();},async flush(){for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));}};
 }
-test('manual boundary moves text both ways, saves it, and published reader uses that exact split',async()=>{
-  const e=await editor();await e.element('open-split-editor').onclick();
-  const full=e.element('split-content');assert.equal(full.value,initial.beforeContent+'\n\n'+initial.afterContent);
-  full.setSelectionRange(4,4);await e.element('apply-manual-split').onclick();
-  assert.equal(e.stored.data.beforeContent,'첫 문단');assert.equal(e.stored.data.afterContent,'둘째 문단\n\n셋째 문단\n\n마지막 문단');
-  await e.element('open-split-editor').onclick();const cut=full.value.indexOf('마지막 문단');full.setSelectionRange(cut,cut);await e.element('apply-manual-split').onclick();
+test('embedded boundary moves by paragraph, survives reopen, and published reader uses that exact split',async()=>{
+  const e=await editor();await e.element('ad-boundary').events.keydown({key:'ArrowDown',preventDefault(){}});
   assert.equal(e.stored.data.beforeContent,'첫 문단\n\n둘째 문단\n\n셋째 문단');assert.equal(e.stored.data.afterContent,'마지막 문단');
-  await e.element('publish-story').onclick();assert.equal(e.published.beforeContent,e.stored.data.beforeContent);assert.equal(e.published.afterContent,'마지막 문단');
-  const html=articlePage(e.published,[]);const opening=html.match(/<div id="opening">([\s\S]*?)<\/div>/)[1];assert.ok(opening.includes('셋째 문단'));assert.ok(!opening.includes('마지막 문단'));
-  assert.match(e.element('status').textContent,/게시본까지 확인/);assert.ok(!e.requests.some(x=>x.path==='/api/jobs'));
+  const reopened=await editor(e.stored.data);assert.equal(reopened.element('before-editor').textContent,'첫 문단\n\n둘째 문단\n\n셋째 문단');assert.equal(reopened.element('after-editor').textContent,'마지막 문단');
+  await reopened.element('publish-story').onclick();assert.equal(reopened.published.beforeContent,reopened.stored.data.beforeContent);assert.equal(reopened.published.afterContent,'마지막 문단');
+  const html=articlePage(reopened.published,[]);const opening=html.match(/<div id="opening">([\s\S]*?)<\/div>/)[1];assert.ok(opening.includes('셋째 문단'));assert.ok(!opening.includes('마지막 문단'));
+  assert.match(reopened.element('status').textContent,/게시본까지 확인/);assert.ok(!reopened.requests.some(x=>x.path==='/api/jobs'));
 });
 test('direct editor changes survive a pending autosave followed immediately by publish',async()=>{
   const e=await editor();let release;const waiting=new Promise(resolve=>release=resolve);e.delayNextSave(waiting);
@@ -57,10 +54,8 @@ test('direct editor changes survive a pending autosave followed immediately by p
   assert.equal(e.published.beforeContent,'사용자가 마지막으로 쓴 앞부분\n\n공개 마지막 문장');assert.equal(e.published.afterContent,'광고 뒤에만 보일 결말');assert.equal(e.published.fadeHeight,240);
   assert.equal(e.element('before-content').disabled,false);assert.equal(e.element('after-content').value,e.published.afterContent);
 });
-test('boundary editor cannot silently publish unapplied edits or overwrite newer body text',async()=>{
-  const e=await editor();await e.element('open-split-editor').onclick();await e.element('publish-story').onclick();
-  assert.equal(e.published,null);assert.match(e.element('status').textContent,/먼저 적용/);
-  e.input('before-content','더 최근에 수정한 본문');e.element('split-content').setSelectionRange(4,4);await e.element('apply-manual-split').onclick();
-  assert.equal(e.element('before-content').value,'더 최근에 수정한 본문');assert.match(e.element('status').textContent,/본문이 변경/);
-  e.element('cancel-manual-split').onclick();await e.element('publish-story').onclick();assert.equal(e.published.beforeContent,'더 최근에 수정한 본문');
+test('publish is blocked while the embedded boundary is actively being dragged',async()=>{
+  const e=await editor();e.element('ad-boundary').events.pointerdown({button:0,pointerId:7,preventDefault(){}});await e.element('publish-story').onclick();
+  assert.equal(e.published,null);assert.match(e.element('status').textContent,/이동을 먼저 마쳐/);
+  e.windowEvent('pointercancel',{pointerId:7});await e.element('publish-story').onclick();assert.equal(e.published.beforeContent,initial.beforeContent);
 });

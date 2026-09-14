@@ -40,6 +40,9 @@ jobs:
           grep -q 'Math.ceil(filtered.length/20)' dist/ssul-community.mjs
           grep -q 'id="new-story"' dist/studio.html
           ! grep -q 'id="story-select"' dist/studio.html
+          grep -q 'id="ad-boundary"' dist/studio.html
+          ! grep -q 'id="manual-split"' dist/studio.html
+          grep -q "addEventListener('pointerdown'" dist/studio.js
           grep -q "lengthMode:'source'" dist/studio.js
           grep -q 'sourceImageKey' dist/studio.js
           grep -q 'job_candidate' dist/_worker.js

@@ -65,8 +65,8 @@ DNS를 Cloudflare에서 관리하면 HTTPS 인증서도 Cloudflare가 처리합�
 
 ## 제작실 공개 방식
 
-- 진입 주소: `/studio/`
-- 로그인, 쿠키 인증, 비밀 접근 주소가 없습니다.
-- 제작실 원고, 작성 지침, 작업 기록은 방문자 모두가 같은 공용 공간을 사용합니다.
-- 주소를 아는 사람은 원고 수정, 게시, 이미지 업로드와 Claude 호출을 할 수 있습니다.
+- 공개 사이트 검색창에 `썰판 스튜디오`를 입력하면 비밀번호 입력창이 열립니다.
+- 비밀번호 비교는 Supabase Edge Function에서만 수행하며, 공개 HTML·JavaScript·Worker 번들에는 비밀번호를 넣지 않습니다.
+- 검증 성공 시 12시간 유효한 서명 세션을 `HttpOnly; Secure; SameSite=Strict` 쿠키로 발급합니다.
+- `/studio/`, 제작실 보조 화면, 쓰기·관리 API는 모두 같은 서버 세션을 확인하므로 직접 URL로 우회할 수 없습니다.
 - 서비스 역할 키와 Claude API 키는 Supabase Edge Function 안에서만 사용하며 브라우저로 보내지 않습니다.

@@ -74,6 +74,10 @@ def main():
     assets=['style.css','community.css','community.js','reader.js','cover.js','thumbnails.js','brand/ssulpan-logo.png','community/office.png','community/friends.png','community/night.png']
     for name in assets:
         data=(SRC/name).read_bytes(); digest=hashlib.sha256(data).hexdigest()
+        if digest!=records[name]['sha256'] and b'\r\n' in data:
+            normalized=data.replace(b'\r\n',b'\n')
+            if hashlib.sha256(normalized).hexdigest()==records[name]['sha256']:
+                data=normalized; digest=records[name]['sha256']
         assert digest==records[name]['sha256'],name+' source hash mismatch'
         dest=OUT/name; dest.parent.mkdir(parents=True,exist_ok=True); dest.write_bytes(data)
         exact.append({'path':name,'sha256':digest,'bytes':len(data)})
