@@ -4,7 +4,7 @@
   const fields={title:'story-title',category:'category',teaser:'teaser',beforeContent:'before-content',afterContent:'after-content',hook:'hook',coverDetail:'cover-detail',caption:'caption',hashtags:'hashtags',sourceText:'source-text',sourceUrl:'source-url',storyBible:'story-bible',notes:'writing-notes',gateLine:'gate-line',rewriteInstruction:'rewrite-instruction'};
   const labels={prompt:'작성 지침 생성',generate:'전체 생성',rewrite:'부분 수정',extract:'이미지 글 읽기',social:'인스타 문구',review:'내용 점검',split:'끊을 위치 추천'};
   let current=null,items=[],dirty=false,timer,saveChain=Promise.resolve(),busy=false,loading=false,uploading=false,connected=false,previewView='before',proposal=null,selectedTitle=null;
-  let publishing=false,boundaryDragging=null,bodySyncing=false;
+  let publishing=false,boundaryDragging=null,bodySyncing=false,deleteTarget=null;
   let promptState={prompt:'',revision:0},promptDirty=false,promptSaving=false;
   const message=text=>{$('status').textContent=text;};
   const work=text=>{$('work-status').textContent=text;};
@@ -76,6 +76,7 @@
     let item=items.find(i=>i.id===current.id);
     if(!item){item={id:current.id,published:false};items.unshift(item);}
     item.title=$('story-title').value||'제목 없는 원고';item.revision=current.revision;item.updatedAt=current.updatedAt||0;
+    $('delete-story').disabled=publishing;
     $('workspace-title').textContent=$('story-title').value||'새 원고';
   }
   function promptStatus(){
@@ -126,6 +127,7 @@
   function openWorkspace(result){
     current=result;dirty=false;previewView='before';if(boundaryDragging)finishBoundaryDrag(false);fill(result.data);
     $('reader-preview').src='/studio/preview/?id='+encodeURIComponent(result.id)+'&preview=1';publication();
+    $('delete-story').disabled=!result.revision&&!items.some(item=>item.id===result.id);
     $('draft-status').textContent=result.revision?'저장한 원고를 불러왔어요.':items.find(i=>i.id===result.id)?.published?'게시된 원고를 불러왔어요.':'소재나 작성 요청을 넣어 시작하세요.';
     $('proposal').hidden=true;proposal=null;
     const url=new URL(location.href);url.searchParams.set('story',result.id);window.history.replaceState(null,'',url);
@@ -209,6 +211,33 @@
   $('save-prompt').onclick=guard(async()=>{await savePrompt();message('작성 지침을 저장했어요.');});
   $('connect-claude').onclick=guard(async()=>{const b=$('connect-claude');b.disabled=true;$('connection-result').textContent='클로드 연결을 확인하고 있어요…';const key=$('claude-key').value;$('claude-key').value='';try{const settings=await api('/api/settings',{method:'POST',body:JSON.stringify({key,model:$('claude-model').value.trim()})});connected=settings.configured;$('connection-status').textContent='클로드 연결됨 · '+settings.model;$('connection-result').textContent='연결했어요. 원고를 만들 수 있습니다.';}catch(e){$('connection-result').textContent=e.message;}finally{b.disabled=false;}});
   $('save-draft').onclick=guard(()=>save('직접 저장',true));
+  $('delete-story').onclick=guard(()=>{
+    if(!current||publishing)return;
+    if(busy||loading||uploading||promptSaving)throw new Error('진행 중인 작업이 끝난 뒤 삭제해 주세요.');
+    if(boundaryDragging)throw new Error('광고 전 공개 범위 이동을 먼저 마쳐 주세요.');
+    deleteTarget=current.id;
+    $('delete-story-title').textContent=$('story-title').value||'제목 없는 원고';
+    $('delete-dialog').showModal();
+  });
+  $('cancel-delete').onclick=()=>{$('delete-dialog').close();deleteTarget=null;};
+  $('delete-dialog').addEventListener('cancel',()=>{deleteTarget=null;});
+  $('confirm-delete').onclick=guard(async()=>{
+    if(!current||deleteTarget!==current.id||publishing)return;
+    publishing=true;const did=current.id;
+    const controls=[...document.querySelectorAll('.studio-wrap input,.studio-wrap textarea,.studio-wrap select,.studio-wrap button,.studio-wrap [contenteditable]')].map(el=>[el,el.disabled,el.getAttribute?.('contenteditable')]);
+    controls.forEach(([el])=>{if('disabled' in el)el.disabled=true;if(el.getAttribute?.('contenteditable')!==null)el.contentEditable='false';});
+    $('delete-dialog').close();deleteTarget=null;message('게시글을 삭제하고 있어요…');
+    try{
+      // Drain any pending autosave, then retain the latest edit for recovery.
+      const saved=await save('삭제 전 복구용 저장',true);
+      if(promptDirty)await savePrompt();
+      const result=await api('/api/drafts/'+did,{method:'DELETE',body:JSON.stringify({revision:saved.revision})});
+      if(result.deleted!==true||result.id!==did)throw new Error('삭제 결과를 확인하지 못했어요. 다시 시도해 주세요.');
+      clearTimeout(timer);dirty=false;items=items.filter(item=>item.id!==did);current=null;
+      try{localStorage.removeItem('sseolzip:pending:'+did);localStorage.removeItem('sseolzip:body-draft:v1:'+did);}catch{}
+      location.assign('/');
+    }finally{publishing=false;controls.forEach(([el,disabled,editable])=>{if('disabled' in el)el.disabled=disabled;if(editable!==undefined&&editable!==null)el.setAttribute('contenteditable',editable);});}
+  });
   $('publish-story').onclick=guard(async()=>{
     if(!current||publishing)return;
     if(busy||loading||uploading)throw new Error('진행 중인 작업이 끝난 뒤 게시해 주세요.');
@@ -312,7 +341,7 @@
     $('connection-status').textContent=connected?'클로드 연결됨 · '+settings.model:'클로드 API 키를 연결하면 소재 읽기와 원고 생성을 사용할 수 있어요.';
     items=data.drafts;setPrompt(prompt);
     const requested=new URLSearchParams(location.search).get('story'),last=items.find(x=>x.revision>0);
-    if(items.some(x=>x.id===requested))await choose(requested,true);
+    if(requested)await choose(requested,true);
     else if(last)await choose(last.id,true);
     else openWorkspace({id:crypto.randomUUID(),data:empty(),revision:0,updatedAt:0});
     $('new-story').disabled=false;

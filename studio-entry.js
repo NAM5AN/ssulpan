@@ -19,8 +19,10 @@
   const password = dialog.querySelector('input');
   const error = dialog.querySelector('[role="alert"]');
   const submit = dialog.querySelector('[type="submit"]');
-  let pending;
-  const open = () => {
+  let pending, storyId = null;
+  const open = (target = null) => {
+    storyId = target;
+    dialog.querySelector('h2').textContent = target ? '게시글 수정' : '스튜디오 입장';
     password.value = '';
     error.textContent = '';
     if (!dialog.open) dialog.showModal();
@@ -31,13 +33,26 @@
     event.preventDefault();
     open();
   });
+  // A plain text gesture: no link, title, role, tabindex or hover/cursor styling.
+  const views = document.getElementById('story-view-count');
+  try {
+    const reader = JSON.parse(document.getElementById('reader-data')?.textContent || '{}');
+    if (views && reader.trackViews === true && /^[\w-]{1,100}$/.test(String(reader.id))) {
+      let clicks = 0, reset;
+      views.addEventListener('click', () => {
+        clearTimeout(reset);
+        if (++clicks === 3) { clicks = 0; open(String(reader.id)); }
+        else reset = setTimeout(() => { clicks = 0; }, 700);
+      });
+    }
+  } catch { /* Non-reader pages keep the ordinary search entry. */ }
   dialog.querySelector('[data-cancel]').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
     pending?.abort();
     pending = undefined;
     password.value = '';
     submit.disabled = false;
-    field.focus();
+    if (!storyId) field.focus();
   });
   form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -51,14 +66,14 @@
       const response = await fetch('/api/studio-entry', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: password.value}),
+        body: JSON.stringify({password: password.value, ...(storyId ? {storyId} : {})}),
         signal: controller.signal
       });
       const result = await response.json();
       if (pending !== controller || !dialog.open) return;
       if (response.ok && result.ok) {
         password.value = '';
-        window.location.assign('/studio/');
+        window.location.assign(result.url);
       } else {
         error.textContent = result.error || '입장하지 못했어요. 다시 시도해 주세요.';
         password.select();

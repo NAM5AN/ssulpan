@@ -360,7 +360,7 @@ async function listDrafts() {
   const published = new Set((posts || []).map((post: any) => String(post.id)));
   return {
     drafts: [
-      ...(rows || []).map((row: any) => ({
+      ...(rows || []).filter((row: any) => !row.data?.deletedAt).map((row: any) => ({
         id: String(row.id),
         title: row.data?.title || "제목 없는 원고",
         revision: Number(row.revision || 0),
@@ -387,10 +387,11 @@ async function getDraft(draftId: string) {
     .eq("owner_id", OWNER_ID)
     .maybeSingle();
   if (error) throw error;
+  if (data?.data?.deletedAt) fail(404, "삭제된 원고예요.");
   if (data) return { id: String(data.id), data: cleanDraft(data.data), revision: Number(data.revision || 0), updatedAt: Date.parse(data.updated_at) || 0 };
   const { data: post, error: postError } = await admin.from("ssul_posts").select("*").eq("id", draftId).maybeSingle();
   if (postError) throw postError;
-  if (post) return { id: draftId, data: postToDraft(post), revision: 0, updatedAt: Date.parse(post.updated_at || post.published_at) || 0 };
+  if (post && post.status !== "archived") return { id: draftId, data: postToDraft(post), revision: 0, updatedAt: Date.parse(post.updated_at || post.published_at) || 0 };
   fail(404, "원고를 찾지 못했어요.");
 }
 
@@ -407,6 +408,7 @@ async function saveDraft(draftId: string, input: any) {
     .maybeSingle();
   if (error) throw error;
   if (Number(old?.revision || 0) !== revision) fail(409, "다른 창에서 원고가 변경됐어요. 현재 내용을 내보낸 뒤 원고를 다시 열어 주세요.");
+  if (old?.data?.deletedAt) fail(410, "삭제된 원고는 다시 저장할 수 없어요.");
   if (old) {
     const { error: versionError } = await admin.from("ssul_versions").insert({
       draft_id: draftId,
@@ -429,6 +431,7 @@ async function saveDraft(draftId: string, input: any) {
 
 async function listVersions(draftId: string) {
   id(draftId);
+  await getDraft(draftId);
   const { data, error } = await admin
     .from("ssul_versions")
     .select("id,data,reason,created_at,revision")
@@ -447,6 +450,20 @@ async function publishDraft(draftId: string, revision: number) {
   const { error } = await admin.from("ssul_posts").upsert(postRow(draftId, current.data), { onConflict: "id" });
   if (error) throw error;
   return { url: `/stories/${draftId}/` };
+}
+
+async function deleteDraft(draftId: string, revisionInput: unknown) {
+  id(draftId);
+  if (typeof revisionInput !== "number" || !Number.isInteger(revisionInput) || revisionInput < 0) fail(400, "삭제할 원고의 저장 상태를 확인해 주세요.");
+  // The transaction archives both records, checks the exact revision, and keeps
+  // a tombstone so old editor tabs cannot save or publish this ID again.
+  const { data, error } = await admin.rpc("ssul_archive_story", { story_id: draftId, expected_revision: revisionInput });
+  if (error) {
+    if (error.code === "PT409") fail(409, "다른 창에서 원고가 바뀌었어요. 다시 열어 확인한 뒤 삭제해 주세요.");
+    if (error.code === "PT404") fail(404, "원고를 찾지 못했어요.");
+    throw error;
+  }
+  return data;
 }
 
 async function listJobs() {
@@ -1003,6 +1020,7 @@ Deno.serve(async (request) => {
     else if (action === "drafts_list") result = await listDrafts();
     else if (action === "draft_get") result = await getDraft(String(body.id || ""));
     else if (action === "draft_save") result = await saveDraft(String(body.id || ""), body);
+    else if (action === "draft_delete") result = await deleteDraft(String(body.id || ""), body.revision);
     else if (action === "versions_list") result = await listVersions(String(body.id || ""));
     else if (action === "publish") result = await publishDraft(String(body.id || ""), Number(body.revision));
     else if (action === "jobs_list") result = await listJobs();
@@ -1017,6 +1035,10 @@ Deno.serve(async (request) => {
     else fail(404, "요청한 기능을 찾을 수 없어요.");
     return json({ ok: true, ...result });
   } catch (error) {
+    if (["PT409", "PT410", "40P01"].includes((error as any)?.code)) {
+      const deleted = (error as any).code === "PT410";
+      return json({ ok: false, error: deleted ? "삭제된 원고는 다시 저장하거나 게시할 수 없어요." : "다른 창에서 원고가 바뀌었어요. 다시 열어 확인해 주세요." }, deleted ? 410 : 409);
+    }
     const status = error instanceof HttpError ? error.status : Number((error as any)?.status) || 500;
     if (!(error instanceof HttpError)) console.error("studio_request_failed", error);
     return json({ ok: false, error: safeMessage(error instanceof Error ? error.message : String(error)), diagnostics:(error as any)?.diagnostics||{release:GENERATION_RELEASE,stage:"request_validation",error:failureInfo(error,"request_validation")} }, status);

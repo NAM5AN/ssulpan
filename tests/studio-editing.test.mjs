@@ -14,7 +14,8 @@ async function editor(seed=initial){
   const markup=fs.readFileSync('studio.html','utf8');for(const match of markup.matchAll(/\bid="([^"]+)"/g))element(match[1]);
   const controls=[...markup.matchAll(/<(input|textarea|select|button)\b[^>]*id="([^"]+)"/g)].map(m=>element(m[2]));
   const document={getElementById:element,querySelectorAll:selector=>selector.startsWith('.studio-wrap')?controls:[],createElement:()=>element('created-'+elements.size),body:{append(){}}};
-  const location={origin:'https://ssulpan.test',href:'https://ssulpan.test/studio/',search:''};
+  const location={origin:'https://ssulpan.test',href:'https://ssulpan.test/studio/',search:'',assign(url){this.href=url;}};
+  element('delete-dialog').showModal=function(){this.open=true;};element('delete-dialog').close=function(){this.open=false;};
   const fetch=async(path,options={})=>{
     const body=options.body?JSON.parse(options.body):null;requests.push({path,body,method:options.method||'GET'});
     if(path==='/api/settings')return Response.json({configured:false,model:'test'});
@@ -25,6 +26,7 @@ async function editor(seed=initial){
       assert.equal(body.revision,stored.revision);
       stored={...stored,data:cleanDraft(body.data),revision:stored.revision+1,updatedAt:Date.now()};return Response.json(stored);
     }
+    if(path==='/api/drafts/editor-test'&&options.method==='DELETE'){assert.equal(body.revision,stored.revision);published=null;return Response.json({id:stored.id,deleted:true});}
     if(path==='/api/drafts/editor-test')return Response.json(stored);
     if(path==='/api/drafts/editor-test/publish'){assert.equal(body.revision,stored.revision);published={id:stored.id,...publicPost(stored.data)};return Response.json({url:'/stories/editor-test/'});}
     if(path==='/api/ssul_posts?id=editor-test')return Response.json({post:published});
@@ -34,7 +36,7 @@ async function editor(seed=initial){
   vm.runInContext(fs.readFileSync('studio.js','utf8'),context);
   for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.equal(element('before-content').value,seed.beforeContent);
-  return {element,requests,get stored(){return stored;},get published(){return published;},delayNextSave(promise){delaySave=promise;},windowEvent(name,event){return windowEvents.get(name)?.(event);},input(id,value){const el=element(id);assert.equal(el.disabled,false);el.value=value;el.events.input?.();},async flush(){for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));}};
+  return {element,requests,location,get stored(){return stored;},get published(){return published;},delayNextSave(promise){delaySave=promise;},windowEvent(name,event){return windowEvents.get(name)?.(event);},input(id,value){const el=element(id);assert.equal(el.disabled,false);el.value=value;el.events.input?.();},async flush(){for(let i=0;i<20;i++)await new Promise(resolve=>setImmediate(resolve));}};
 }
 test('embedded boundary moves by paragraph, survives reopen, and published reader uses that exact split',async()=>{
   const e=await editor();await e.element('ad-boundary').events.keydown({key:'ArrowDown',preventDefault(){}});
@@ -58,4 +60,15 @@ test('publish is blocked while the embedded boundary is actively being dragged',
   const e=await editor();e.element('ad-boundary').events.pointerdown({button:0,pointerId:7,preventDefault(){}});await e.element('publish-story').onclick();
   assert.equal(e.published,null);assert.match(e.element('status').textContent,/이동을 먼저 마쳐/);
   e.windowEvent('pointercancel',{pointerId:7});await e.element('publish-story').onclick();assert.equal(e.published.beforeContent,initial.beforeContent);
+});
+test('delete confirmation cancels safely, then saves latest edit before deleting the exact revision',async()=>{
+  const e=await editor();await e.element('delete-story').onclick();
+  assert.equal(e.element('delete-dialog').open,true);assert.equal(e.element('delete-story-title').textContent,initial.title);
+  e.element('cancel-delete').onclick();assert.equal(e.element('delete-dialog').open,false);assert.ok(!e.requests.some(r=>r.method==='DELETE'));
+  e.input('before-content','삭제 전 마지막 수정');let release;e.delayNextSave(new Promise(resolve=>release=resolve));
+  const saving=e.element('save-draft').onclick();await e.flush();
+  await e.element('delete-story').onclick();const deleting=e.element('confirm-delete').onclick();await e.flush();
+  assert.equal(e.element('save-draft').disabled,true);assert.ok(!e.requests.some(r=>r.method==='DELETE'));
+  release();await saving;await deleting;
+  assert.equal(e.stored.data.beforeContent,'삭제 전 마지막 수정');assert.equal(e.requests.filter(r=>r.method==='DELETE').length,1);assert.equal(e.location.href,'/');
 });

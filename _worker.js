@@ -29,7 +29,17 @@ async function studioApi(request,path){const method=request.method,u=new URL(req
   if(path==='/api/studio-entry'){
     if(method!=='POST')return json({error:'POST 요청만 사용할 수 있어요.'},405,{Allow:'POST'});
     const body=await requestBody(request);
-    try{const result=await studioCall({action:'studio_access_login',password:body.password},15000);return json({ok:true,url:'/studio/'},200,{'Set-Cookie':sessionCookie(result.token,result.expiresAt)})}catch(error){if(error?.status===401)return json({error:'비밀번호가 맞지 않아요.'},401);throw error}
+    try{
+      const result=await studioCall({action:'studio_access_login',password:body.password},15000);
+      let destination='/studio/';
+      if(body.storyId!==undefined){
+        if(typeof body.storyId!=='string'||!/^\w[\w-]{0,99}$/.test(body.storyId))return json({error:'게시글을 찾지 못했어요.'},400);
+        const target=dbId(body.storyId);
+        await studioCall({action:'draft_get',id:target,studioSession:result.token},15000);
+        destination+='?story='+encodeURIComponent(target);
+      }
+      return json({ok:true,url:destination},200,{'Set-Cookie':sessionCookie(result.token,result.expiresAt)});
+    }catch(error){if(error?.status===401)return json({error:'비밀번호가 맞지 않아요.'},401);throw error}
   }
   if(path==='/api/studio-logout'){if(method!=='POST')return json({error:'POST 요청만 사용할 수 있어요.'},405,{Allow:'POST'});return json({ok:true},200,{'Set-Cookie':clearSessionCookie()});}
   if(path==='/api/settings'){if(method==='GET')return json(await call({action:'settings_get'}));if(method==='POST'){const b=await requestBody(request);return json(await call({action:'settings_save',key:b.key,model:b.model}));}}
@@ -37,7 +47,7 @@ async function studioApi(request,path){const method=request.method,u=new URL(req
   if(path==='/api/drafts'&&method==='GET')return json(await call({action:'drafts_list'}));
   const versions=path.match(/^\/api\/drafts\/([\w-]+)\/versions$/);if(versions&&method==='GET')return json(await call({action:'versions_list',id:versions[1]}));
   const publish=path.match(/^\/api\/drafts\/([\w-]+)\/publish$/);if(publish&&method==='POST'){const b=await requestBody(request);return json(await call({action:'publish',id:publish[1],revision:b.revision}));}
-  const draft=path.match(/^\/api\/drafts\/([\w-]+)$/);if(draft){if(method==='GET')return json(await call({action:'draft_get',id:draft[1]}));if(method==='PUT'){const b=await requestBody(request);return json(await call({action:'draft_save',id:draft[1],data:b.data,revision:b.revision,reason:b.reason}));}}
+  const draft=path.match(/^\/api\/drafts\/([\w-]+)$/);if(draft){if(method==='GET')return json(await call({action:'draft_get',id:draft[1]}));if(method==='PUT'){const b=await requestBody(request);return json(await call({action:'draft_save',id:draft[1],data:b.data,revision:b.revision,reason:b.reason}));}if(method==='DELETE'){const b=await requestBody(request);return json(await call({action:'draft_delete',id:draft[1],revision:b.revision}));}}
   if(path==='/api/jobs'&&method==='GET')return json(await call({action:'jobs_list'}));
   const diagnostic=path.match(/^\/api\/jobs\/([\w-]+)\/diagnostics$/);if(diagnostic&&method==='GET')return json(await call({action:'job_diagnostics',id:diagnostic[1]}));
   const candidate=path.match(/^\/api\/jobs\/([\w-]+)\/candidate$/);if(candidate&&method==='GET')return json(await call({action:'job_candidate',id:candidate[1]}));
