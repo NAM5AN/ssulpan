@@ -52,7 +52,16 @@ export default{async fetch(request,env){const url=new URL(request.url),path=url.
     if(/^\/studio\/access\//.test(path)||path==='/studio-shell.txt')return html('<!doctype html><meta charset="utf-8"><title>페이지를 찾을 수 없어요</title><p>페이지를 찾을 수 없어요.</p>',404,{'X-Robots-Tag':'noindex, nofollow'});
     if(protectedStudioPage(path)&&!await studioAuthorized(request))return html('<!doctype html><meta charset="utf-8"><title>페이지를 찾을 수 없어요</title><p>페이지를 찾을 수 없어요.</p>',404,{'X-Robots-Tag':'noindex, nofollow'});
     if(path==='/studio.html')return Response.redirect(new URL('/studio/',url).href,302);
-    if(path==='/studio'||path==='/studio/'){const assetReq=new Request(new URL('/studio.html',url),request);const res=await env.ASSETS.fetch(assetReq);return new Response(res.body,{status:res.status,headers:{...Object.fromEntries(res.headers),'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}})}
+    if(path==='/studio'||path==='/studio/'){
+      const assetReq=new Request(new URL('/studio.html',url),request),res=await env.ASSETS.fetch(assetReq);
+      // Headers are case-insensitive. Object spreads can append a second MIME
+      // type to the internal .txt asset and make browsers block the document.
+      const headers=new Headers(res.headers);
+      headers.set('Content-Type','text/html; charset=utf-8');
+      headers.set('Cache-Control','no-store');
+      headers.set('X-Robots-Tag','noindex, nofollow');
+      return new Response(res.body,{status:res.status,headers});
+    }
     if(path==='/studio/preview/'){const id=(url.searchParams.get('id')||'preview').replace(/[^\w-]/g,'').slice(0,80)||'preview';const p={id,title:'본문 미리보기',category:'일상',teaser:'',beforeContent:'',afterContent:'',gateLine:'',views:0,fadeHeight:180,date:'',tags:[]};return html(articlePage(p,[],true),200,{'X-Robots-Tag':'noindex, nofollow'})}
     if(path.startsWith('/api/')&&!['/api/ssul_posts'].includes(path)&&!/^\/api\/stories\//.test(path)){if(!['GET','HEAD'].includes(request.method)){const origin=request.headers.get('Origin');if(origin&&origin!==url.origin)return json({error:'Forbidden'},403)}if(!['/api/studio-entry','/api/studio-logout'].includes(path)&&!await studioAuthorized(request))return json({error:'제작실 로그인이 필요해요.'},401);return await studioApi(request,path)}
     if(path==='/api/ssul_posts'){

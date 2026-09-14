@@ -104,7 +104,7 @@ test('studio pages and APIs require the server-issued HttpOnly session',async()=
    if(body.action==='drafts_list')return Response.json({ok:true,drafts:[]});
    return Response.json({ok:true});
   };
-  const env={ASSETS:{fetch:async()=>new Response('<button id="new-story">새 원고</button>',{headers:{'Content-Type':'text/html'}})}};
+  const env={ASSETS:{fetch:async()=>new Response('<button id="new-story">새 원고</button>',{headers:{'content-type':'text/plain; charset=utf-8','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'}})}};
   for(const path of ['/studio/','/studio.html','/studio/preview/','/instagram.html','/manuscript.html'])assert.equal((await worker.fetch(new Request('https://ssulpan.test'+path),env)).status,404,path);
   assert.equal((await worker.fetch(new Request('https://ssulpan.test/api/drafts'),env)).status,401);
   const login=await worker.fetch(new Request('https://ssulpan.test/api/studio-entry',{method:'POST',headers:{Origin:'https://ssulpan.test','Content-Type':'application/json'},body:JSON.stringify({password:'1234'})}),env);
@@ -113,6 +113,9 @@ test('studio pages and APIs require the server-issued HttpOnly session',async()=
   assert.match(setCookie,/^__Host-ssulpan_studio=test-session;/);assert.match(setCookie,/HttpOnly/);assert.match(setCookie,/Secure/);assert.match(setCookie,/SameSite=Strict/);
   const studio=await worker.fetch(new Request('https://ssulpan.test/studio/',{headers:{Cookie:TEST_STUDIO_COOKIE}}),env);
   assert.equal(studio.status,200);
+  assert.equal(studio.headers.get('content-type'),'text/html; charset=utf-8');
+  assert.equal(studio.headers.get('cache-control'),'no-store');
+  assert.equal(studio.headers.get('x-content-type-options'),'nosniff');
   const studioHtml=await studio.text();
   assert.ok(studioHtml.includes('new-story'));
   assert.ok(!studioHtml.includes('story-select'));
