@@ -14,6 +14,13 @@ async function editor(seed=initial){
   const markup=fs.readFileSync('studio.html','utf8');for(const match of markup.matchAll(/\bid="([^"]+)"/g))element(match[1]);
   const controls=[...markup.matchAll(/<(input|textarea|select|button)\b[^>]*id="([^"]+)"/g)].map(m=>element(m[2]));
   const document={getElementById:element,querySelectorAll:selector=>selector.startsWith('.studio-wrap')?controls:[],createElement:()=>element('created-'+elements.size),body:{append(){}}};
+  for(const id of ['body-boundary-editor','ad-boundary','before-editor','after-editor']){
+    const el=element(id);el.clientTop=id==='body-boundary-editor'?1:0;el.style={};el.rect={top:id==='ad-boundary'?350:id==='before-editor'?60:id==='after-editor'?440:0,height:id==='ad-boundary'?54:200};
+    el.getBoundingClientRect=()=>({...el.rect,bottom:el.rect.top+el.rect.height});
+  }
+  element('boundary-drag-map').style={};element('boundary-drag-map').hidden=true;
+  document.createTreeWalker=el=>{const nodes=el.textNodes||[{get data(){return el.textContent;},owner:el}];let i=0;return {nextNode:()=>nodes[i++]||null};};
+  document.createRange=()=>{let node,offset;return {setStart(n,o){node=n;offset=o;},setEnd(){},getBoundingClientRect(){const lines=node.data.slice(0,offset).split('\n'),wrap=20;let line=0;for(const text of lines.slice(0,-1))line+=Math.max(1,Math.ceil(text.length/wrap));line+=Math.floor(lines.at(-1).length/wrap);const top=node.owner.rect.top+(node.lineOffset||0)+line*32;return {top,bottom:top+32,height:32};}};};
   const location={origin:'https://ssulpan.test',href:'https://ssulpan.test/studio/',search:'',assign(url){this.href=url;}};
   element('delete-dialog').showModal=function(){this.open=true;};element('delete-dialog').close=function(){this.open=false;};
   const fetch=async(path,options={})=>{
@@ -32,7 +39,7 @@ async function editor(seed=initial){
     if(path==='/api/ssul_posts?id=editor-test')return Response.json({post:published});
     throw new Error('Unexpected request: '+path);
   };
-  const context=vm.createContext({document,location,fetch,URL,URLSearchParams,Response,TextEncoder,crypto:webcrypto,console,window:{history:{replaceState(){}},addEventListener(name,fn){windowEvents.set(name,fn);}},localStorage:{setItem:(k,v)=>backups.set(k,v),removeItem:k=>backups.delete(k),getItem:k=>backups.get(k)||null},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id)});
+  const context=vm.createContext({document,NodeFilter:{SHOW_TEXT:4},location,fetch,URL,URLSearchParams,Response,TextEncoder,crypto:webcrypto,console,window:{history:{replaceState(){}},addEventListener(name,fn){windowEvents.set(name,fn);}},localStorage:{setItem:(k,v)=>backups.set(k,v),removeItem:k=>backups.delete(k),getItem:k=>backups.get(k)||null},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id)});
   vm.runInContext(fs.readFileSync('studio.js','utf8'),context);
   for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve));
   assert.equal(element('before-content').value,seed.beforeContent);
@@ -71,4 +78,36 @@ test('delete confirmation cancels safely, then saves latest edit before deleting
   assert.equal(e.element('save-draft').disabled,true);assert.ok(!e.requests.some(r=>r.method==='DELETE'));
   release();await saving;await deleting;
   assert.equal(e.stored.data.beforeContent,'삭제 전 마지막 수정');assert.equal(e.requests.filter(r=>r.method==='DELETE').length,1);assert.equal(e.location.href,'/');
+});
+const pointer=(y=377,id=9)=>({button:0,pointerId:id,clientY:y,preventDefault(){}});
+test('press/release and small pointer jitter do not change the boundary or save',async()=>{
+  const e=await editor(),before=e.element('before-editor').textContent,after=e.element('after-editor').textContent;
+  e.element('ad-boundary').events.pointerdown(pointer());e.windowEvent('pointermove',pointer(380));
+  assert.equal(e.element('boundary-drag-map').hidden,true);assert.equal(e.element('before-editor').textContent,before);assert.equal(e.element('after-editor').textContent,after);
+  e.windowEvent('pointerup',pointer(380));await e.flush();assert.ok(!e.requests.some(r=>r.method==='PUT'));assert.equal(e.stored.revision,1);
+});
+test('drag uses existing text geometry; preview never rebuilds the paragraphs or changes the data until drop',async()=>{
+  const e=await editor();e.element('ad-boundary').events.pointerdown(pointer());
+  const before=e.element('before-editor').textContent,after=e.element('after-editor').textContent;
+  e.windowEvent('pointermove',pointer(488));
+  assert.equal(e.element('boundary-drag-map').hidden,false);assert.equal(e.element('boundary-drag-map').style.top,'487px');
+  assert.equal(e.element('boundary-drag-map').children.length,0);assert.equal(e.element('before-editor').textContent,before);assert.equal(e.element('after-editor').textContent,after);
+  assert.ok(!e.requests.some(r=>r.method==='PUT'));
+  for(const y of [487,489,488])e.windowEvent('pointermove',pointer(y));assert.equal(e.element('boundary-drag-map').style.top,'487px');
+  e.windowEvent('pointerup',pointer(488));await e.flush();assert.equal(e.stored.data.afterContent,'마지막 문단');assert.equal(e.stored.revision,2);
+});
+test('grab offset, page scroll, cancellation and lost capture cannot accidentally commit',async()=>{
+  for(const cancel of ['pointercancel','blur','resize','keydown','lostpointercapture']){
+    const e=await editor();e.element('ad-boundary').events.pointerdown(pointer(397));
+    e.windowEvent('pointermove',pointer(508));assert.equal(e.element('boundary-drag-map').style.top,'487px');
+    e.element('body-boundary-editor').rect.top=-200;e.windowEvent('pointermove',pointer(308));assert.equal(e.element('boundary-drag-map').style.top,'487px');
+    if(cancel==='lostpointercapture')e.element('ad-boundary').events.lostpointercapture();else e.windowEvent(cancel,{...pointer(308),key:'Escape'});
+    e.windowEvent('pointerup',pointer(308));await e.flush();assert.equal(e.element('boundary-drag-map').hidden,true);assert.equal(e.stored.revision,1);
+  }
+});
+test('text nodes split by rich text blocks retain their actual paragraph boundary',async()=>{
+  const e=await editor(),surface=e.element('after-editor');surface.textNodes=[{data:'셋째 ',owner:surface},{data:'문단',owner:surface},{data:'마지막 문단',owner:surface,lineOffset:100}];
+  e.element('ad-boundary').events.pointerdown(pointer());e.windowEvent('pointermove',pointer(506));
+  assert.equal(e.element('boundary-drag-map').style.top,'505px');
+  e.windowEvent('pointerup',pointer(506));await e.flush();assert.equal(e.stored.data.afterContent,'마지막 문단');
 });

@@ -38,9 +38,7 @@
     const cuts=[];for(const match of full.matchAll(/\n+/g))if(match.index>0&&match.index<full.length)cuts.push(match.index);
     if(before&&after&&!cuts.includes(before.length))cuts.push(before.length);
     cuts.sort((a,b)=>a-b);
-    const points=[0,...cuts,full.length],paragraphs=[];
-    for(let index=0;index<points.length-1;index++)paragraphs.push(full.slice(points[index],points[index+1]).replace(/^\n+|\n+$/g,'')||'빈 줄');
-    return {before,after,full,cuts,paragraphs,current:Math.max(1,cuts.indexOf(before.length)+1)};
+    return {before,after,full,cuts,current:Math.max(1,cuts.indexOf(before.length)+1)};
   }
   function applyBoundary(model,index){
     if(!current||publishing||index<1||index>model.cuts.length)return false;
@@ -54,22 +52,53 @@
     if(!applyBoundary(model,index)){message('광고 전과 후에 내용이 남는 문단 경계로 옮겨 주세요.');return;}
     await save('광고 전 공개 범위 이동',true);message('광고 전 공개 범위를 저장했어요. 게시 버튼을 누르면 사용자 화면에 반영됩니다.');
   }
-  function renderDragMap(){
-    const map=$('boundary-drag-map'),state=boundaryDragging;if(!state)return;
-    map.replaceChildren();
-    state.model.paragraphs.forEach((text,index)=>{
-      if(index===state.index){const preview=document.createElement('div'),label=document.createElement('span');preview.className='boundary-drag-preview';label.textContent='광고 전 공개 범위';preview.append(label);map.append(preview);}
-      const row=document.createElement('p');row.className='boundary-drag-paragraph';row.textContent=text;map.append(row);
+  function boundaryStops(model){
+    // Measure the existing rendered text, including wrapped lines and rich-text
+    // blocks. Never clone/reflow the body to calculate a drag destination.
+    const characters=[];
+    for(const side of ['before','after']){
+      const walker=document.createTreeWalker($(side+'-editor'),NodeFilter.SHOW_TEXT);
+      for(let node=walker.nextNode();node;node=walker.nextNode())
+        for(let offset=0;offset<node.data.length;offset++)if(/\S/.test(node.data[offset]))characters.push({node,offset});
+    }
+    if(characters.map(p=>p.node.data[p.offset]).join('')!==model.full.replace(/\s/g,''))return null;
+    const container=$('body-boundary-editor'),origin=container.getBoundingClientRect().top+container.clientTop;
+    const handle=$('ad-boundary').getBoundingClientRect(),range=document.createRange();
+    const rect=p=>{range.setStart(p.node,p.offset);range.setEnd(p.node,p.offset+1);return range.getBoundingClientRect();};
+    let cursor=0,compact=0;
+    return model.cuts.map((cut,index)=>{
+      while(cursor<cut){if(/\S/.test(model.full[cursor]))compact++;cursor++;}
+      if(index+1===model.current)return handle.top+handle.height/2-origin;
+      if(!characters[compact-1]||!characters[compact])return null;
+      const above=rect(characters[compact-1]),below=rect(characters[compact]);
+      return above.height&&below.height?(above.bottom+below.top)/2-origin:null;
     });
   }
+  function renderDragMap(){
+    const state=boundaryDragging;if(!state)return;
+    const moved=state.active&&state.index!==state.model.current;
+    $('boundary-drag-map').hidden=!moved;
+    $('body-boundary-editor').classList.toggle('has-boundary-preview',moved);
+    // This overlay contains only a line: it cannot move any paragraph or button.
+    if(moved)$('boundary-drag-map').style.top=state.stops[state.index-1]+'px';
+  }
   function dragIndex(clientY){
-    const rows=[...$('boundary-drag-map').querySelectorAll('.boundary-drag-paragraph')],maximum=Math.max(1,rows.length-1);let index=1;
-    for(let i=0;i<rows.length-1;i++){const top=rows[i].getBoundingClientRect(),bottom=rows[i+1].getBoundingClientRect();if(clientY>(top.bottom+bottom.top)/2)index=i+1;}
-    return Math.min(maximum,index);
+    const state=boundaryDragging,container=$('body-boundary-editor');
+    const y=clientY-container.getBoundingClientRect().top-container.clientTop-state.grabOffset;
+    let index=state.model.current,distance=Math.abs(y-state.stops[index-1]);
+    state.stops.forEach((top,i)=>{if(top!==null&&Math.abs(y-top)<distance){index=i+1;distance=Math.abs(y-top);}});
+    return index;
+  }
+  function moveBoundaryDrag(clientY){
+    const state=boundaryDragging;if(!state)return;
+    state.clientY=clientY;
+    if(!state.active&&Math.abs(clientY-state.startY)<4)return;
+    state.active=true;state.index=dragIndex(clientY);renderDragMap();
   }
   function finishBoundaryDrag(commit){
-    const state=boundaryDragging;if(!state)return;boundaryDragging=null;$('boundary-drag-map').hidden=true;$('body-boundary-editor').classList.remove('is-dragging');
-    if(commit)saveBoundary(state.model,state.index).catch(error=>message(error.message));
+    const state=boundaryDragging;if(!state)return;boundaryDragging=null;$('boundary-drag-map').hidden=true;$('body-boundary-editor').classList.remove('is-dragging','has-boundary-preview');
+    const handle=$('ad-boundary');if(handle.hasPointerCapture?.(state.pointerId))handle.releasePointerCapture(state.pointerId);
+    if(commit&&state.active&&state.index!==state.model.current)saveBoundary(state.model,state.index).catch(error=>message(error.message));
   }
   function updateItem(){
     if(!current)return;
@@ -261,11 +290,22 @@
   $('ad-boundary').addEventListener('pointerdown',event=>{
     if(!current||busy||loading||uploading||publishing||event.button!==0)return;
     const model=boundaryModel();if(model.cuts.length<2){message('경계를 옮기려면 본문에 문단을 두 개 이상 만들어 주세요.');return;}
-    event.preventDefault();boundaryDragging={model,index:model.current,pointerId:event.pointerId};$('body-boundary-editor').classList.add('is-dragging');$('boundary-drag-map').hidden=false;renderDragMap();$('ad-boundary').setPointerCapture?.(event.pointerId);
+    const stops=boundaryStops(model);if(!stops||stops[model.current-1]===null){message('문단 위치를 확인하지 못했어요. 경계선의 방향키로 옮기거나 원고를 다시 열어 주세요.');return;}
+    event.preventDefault();
+    const container=$('body-boundary-editor'),center=container.getBoundingClientRect().top+container.clientTop+stops[model.current-1];
+    const startY=event.clientY??center;
+    boundaryDragging={model,stops,index:model.current,pointerId:event.pointerId,startY,clientY:startY,grabOffset:startY-center,active:false};
+    container.classList.add('is-dragging');$('ad-boundary').setPointerCapture?.(event.pointerId);
   });
-  window.addEventListener('pointermove',event=>{if(!boundaryDragging||event.pointerId!==boundaryDragging.pointerId)return;event.preventDefault();const index=dragIndex(event.clientY);if(index!==boundaryDragging.index){boundaryDragging.index=index;renderDragMap();}});
+  window.addEventListener('pointermove',event=>{if(!boundaryDragging||event.pointerId!==boundaryDragging.pointerId)return;event.preventDefault();moveBoundaryDrag(event.clientY);});
   window.addEventListener('pointerup',event=>{if(boundaryDragging&&event.pointerId===boundaryDragging.pointerId)finishBoundaryDrag(true);});
   window.addEventListener('pointercancel',event=>{if(boundaryDragging&&event.pointerId===boundaryDragging.pointerId)finishBoundaryDrag(false);});
+  $('ad-boundary').addEventListener('lostpointercapture',()=>finishBoundaryDrag(false));
+  window.addEventListener('blur',()=>finishBoundaryDrag(false));
+  window.addEventListener('resize',()=>finishBoundaryDrag(false));
+  window.addEventListener('scroll',()=>{if(boundaryDragging?.active)moveBoundaryDrag(boundaryDragging.clientY);},true);
+  window.addEventListener('keydown',event=>{if(boundaryDragging&&event.key==='Escape'){event.preventDefault();finishBoundaryDrag(false);}});
+  for(const side of ['before','after'])$(side+'-editor').addEventListener('beforeinput',event=>{if(boundaryDragging)event.preventDefault();});
   $('ad-boundary').addEventListener('keydown',guard(async event=>{
     const delta=['ArrowUp','ArrowLeft'].includes(event.key)?-1:['ArrowDown','ArrowRight'].includes(event.key)?1:0;if(!delta)return;
     event.preventDefault();const model=boundaryModel(),next=Math.max(1,Math.min(model.cuts.length,model.current+delta));if(next===model.current){message('더 이상 그 방향으로 옮길 문단이 없어요.');return;}await saveBoundary(model,next);
