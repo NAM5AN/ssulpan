@@ -13,15 +13,8 @@
 /* Public reader affiliate placement. Kept outside the captured original CSS. */
 .partner-action-link { display: flex; align-items: center; justify-content: center; box-sizing: border-box; text-decoration: none; }
 .partner-ad { width: 100%; max-width: 410px; margin: 0 auto 30px; text-align: center; }
-.partner-banner { position: relative; display: flex; aspect-ratio: 16 / 9; box-sizing: border-box; flex-direction: column; align-items: flex-start; justify-content: space-between; overflow: hidden; padding: 28px; border: 1px solid #ffd6c8; border-radius: 4px; background: linear-gradient(145deg, #fff8f4 0%, #ffe7dc 58%, #ffc9b4 100%); color: #171717; text-align: left; text-decoration: none; }
-.partner-banner::after { content: ""; position: absolute; right: -14%; bottom: -34%; width: 72%; aspect-ratio: 1; border-radius: 50%; background: rgb(253 88 43 / 12%); }
-.partner-banner-label, .partner-banner-action, .partner-banner strong { position: relative; z-index: 1; }
-.partner-banner-label { font-size: 12px; line-height: 1.6; color: #777; }
-.partner-banner strong { max-width: 75%; font-size: 25px; line-height: 1.45; letter-spacing: -.025em; }
-.partner-banner-action { font-size: 14px; font-weight: 700; color: #ad3f24; }
-.partner-banner:hover strong { text-decoration: underline; text-underline-offset: 4px; }
+.partner-banner-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: #f5f5f5; }
+.partner-banner-source { position: absolute; top: 0; left: 0; z-index: 1; width: 1200px; height: 675px; transform-origin: top left; }
+.partner-banner-source iframe { display: block; width: 1200px; height: 675px; border: 0; }
+.partner-banner-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: #777; font-size: 13px; text-decoration: none; }
 .article-body .partner-disclosure { display: block; margin: 12px 0 0; font-size: 12px; line-height: 1.7; color: #777; text-align: center; word-break: keep-all; overflow-wrap: anywhere; }
-@media (max-width: 520px) {
-  .partner-banner { padding: 22px; }
-  .partner-banner strong { font-size: 22px; }
-}

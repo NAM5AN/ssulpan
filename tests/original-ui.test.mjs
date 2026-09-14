@@ -44,17 +44,21 @@ test('all six original complete articles and continue-reading DOM survive',()=>{
  for(const p of rows){const h=articlePage(p,rows);assert.ok(h.includes('id="continue-reading"'));assert.ok(h.includes('id="continuation" hidden'));assert.ok(h.includes('rel="prev"'));assert.ok(h.includes('rel="next"'));assert.ok(h.includes('이야기 끝'));assert.ok(h.includes(p.afterContent.split('\n\n').at(-1)));}
  assert.equal(dbId('001'),'1');assert.equal(storyUrl('1'),'/stories/001/');assert.equal(storyUrl('draft-abc'),'/stories/draft-abc/');
 });
-test('reader affiliate button, 16:9 banner, disclosure and related list use the requested order',()=>{
+test('reader affiliate button, Coupang carousel, two-line disclosure and related list use the requested order',()=>{
  const h=articlePage(rows[0],rows),url='https://link.coupang.com/a/g2hSTEteOy';
  assert.match(h,new RegExp(`<a class="continue-button partner-action-link" id="continue-reading" href="${url}" target="_blank" rel="sponsored noopener noreferrer"`));
  assert.equal((h.match(new RegExp(url,'g'))||[]).length,2);
- assert.ok(h.includes('이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.'));
+ assert.ok(h.includes('<script src="https://ads-partners.coupang.com/g.js"></script>'));
+ assert.ok(h.includes('new PartnersCoupang.G({"id":1029313,"template":"carousel","trackingCode":"AF4683589","width":"1200","height":"675","tsource":""})'));
+ assert.ok(h.includes("if(s.querySelector('iframe'))f.hidden=true"));
+ assert.ok(h.includes('이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다.'));
  assert.ok(h.indexOf('id="continue-reading"')<h.indexOf('class="partner-ad"'));
  assert.ok(h.indexOf('class="partner-ad"')<h.indexOf('id="continuation"'));
  assert.ok(h.indexOf('partner-disclosure')<h.indexOf('class="related"'));
  const css=fs.readFileSync('studio-entry.css','utf8');
  assert.match(css,/\.partner-ad \{[^}]*max-width: 410px/);
- assert.match(css,/\.partner-banner \{[^}]*aspect-ratio: 16 \/ 9/);
+ assert.match(css,/\.partner-banner-frame \{[^}]*aspect-ratio: 16 \/ 9/);
+ assert.match(css,/\.partner-banner-source \{[^}]*width: 1200px; height: 675px/);
 });
 test('stored article text cannot inject HTML',()=>{const h=articlePage({...rows[0],title:'<img src=x onerror=alert(1)>',beforeContent:'<script>alert(1)</script>'},rows);assert.ok(h.includes('&lt;script&gt;'));assert.ok(!h.includes('<img src=x'));});
 test('canonical recovered sample content via compatibility API without overwriting new edits',async()=>{
