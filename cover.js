@@ -107,59 +107,7 @@
       }, 100);
     });
   }
-  function setupStudioStart() {
-    const button = document.getElementById('new-story');
-    if (!button) return;
-    const explicitlyRequestedStory = new URLSearchParams(location.search).has('story');
-    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-    const scrollTop = () => window.scrollTo({left: 0, top: 0, behavior: 'auto'});
-    const removeBlankStoryParam = () => {
-      const url = new URL(location.href);
-      if (!url.searchParams.has('story')) return;
-      url.searchParams.delete('story');
-      history.replaceState(null, '', url);
-    };
-    const restoreAfterNewStory = (left, top) => {
-      let sawDisabled = button.disabled;
-      const restore = () => window.scrollTo({left, top, behavior: 'auto'});
-      const finish = () => {
-        removeBlankStoryParam();
-        restore();
-        requestAnimationFrame(() => { restore(); requestAnimationFrame(restore); });
-        setTimeout(restore, 120);
-      };
-      const observer = new MutationObserver(() => {
-        if (button.disabled) { sawDisabled = true; return; }
-        if (!sawDisabled) return;
-        observer.disconnect();
-        finish();
-      });
-      observer.observe(button, {attributes: true, attributeFilter: ['disabled']});
-      setTimeout(() => { if (!button.disabled && sawDisabled) { observer.disconnect(); finish(); } }, 4000);
-    };
-    button.addEventListener('click', () => {
-      const left = window.scrollX, top = window.scrollY;
-      restoreAfterNewStory(left, top);
-    }, true);
-    scrollTop();
-    requestAnimationFrame(scrollTop);
-    window.addEventListener('pageshow', scrollTop, {once: true});
-    setTimeout(scrollTop, 80);
-    if (explicitlyRequestedStory) return;
-    let tries = 0;
-    const timer = setInterval(() => {
-      tries += 1;
-      if (typeof button.onclick === 'function' && !button.disabled) {
-        clearInterval(timer);
-        scrollTop();
-        button.click();
-        return;
-      }
-      if (tries >= 400) clearInterval(timer);
-    }, 25);
-  }
   repairHookField();
   watchProposalApply();
-  setupStudioStart();
   window.SseolzipCover = Object.freeze({draw, drawThumbnail, width: WIDTH, height: HEIGHT});
 })();
