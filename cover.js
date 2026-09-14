@@ -2,9 +2,11 @@
 (() => {
   const WIDTH = 1080, HEIGHT = 1920;
   const FACE = '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  const normalizeBreaks = value => String(value ?? '')
+    .replace(/\\r\\n|\\n|\\r/g, '\n');
   function wrap(ctx, text, width) {
     const result = [];
-    for (const paragraph of String(text).split('\n').filter(line => line.trim())) {
+    for (const paragraph of normalizeBreaks(text).split('\n').filter(line => line.trim())) {
       let line = '';
       for (const character of Array.from(paragraph)) {
         if (line && ctx.measureText(line + character).width > width) {
@@ -23,8 +25,9 @@
     ctx.fillStyle = '#000000'; ctx.textBaseline = 'top';
     const left = 80, textWidth = WIDTH - left * 2;
     const headlineY = 640, headlineHeight = 760, lineHeight = 1.2;
+    const hook = normalizeBreaks(data.hook || '');
     ctx.font = `500 40px ${FACE}`; ctx.fillText(data.category || '이야기', left, 520);
-    const lines = String(data.hook || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const lines = hook.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     let size = 144;
     const fitsHeadline = () => lines.length > 0
       && lines.every(line => ctx.measureText(line).width <= textWidth)
@@ -42,7 +45,7 @@
     ctx.font = `500 48px ${FACE}`;
     const detailLines = wrap(ctx, data.detail || '', textWidth);
     detailLines.slice(0, 4).forEach((line, i) => ctx.fillText(line, left, 1460 + i * 66));
-    canvas.setAttribute('aria-label', '1080×1920 썰판 표지: ' + data.hook.replace(/\n/g, ' '));
+    canvas.setAttribute('aria-label', '1080×1920 썰판 표지: ' + hook.replace(/\n/g, ' '));
     return fits && detailLines.length <= 4;
   }
   function drawThumbnail(canvas, data) {
@@ -55,7 +58,7 @@
     // Keep the cover's authored line breaks; wrap only at spaces where possible.
     function linesFor(text) {
       const lines = [];
-      for (const paragraph of String(text).split(/\r?\n/).filter(p => p.trim())) {
+      for (const paragraph of normalizeBreaks(text).split(/\r?\n/).filter(p => p.trim())) {
         let line = '';
         for (const word of paragraph.trim().split(/\s+/)) {
           const candidate = line ? line + ' ' + word : word;
@@ -83,5 +86,28 @@
     const detailFits = textBlock(data.detail || '', 32, 490, 86, 500, 1.3);
     return titleFits && detailFits;
   }
+  function repairHookField() {
+    const hook = document.getElementById('hook');
+    if (!hook) return false;
+    const normalized = normalizeBreaks(hook.value);
+    if (normalized === hook.value) return false;
+    hook.value = normalized;
+    hook.dispatchEvent(new Event('input', {bubbles: true}));
+    return true;
+  }
+  function watchProposalApply() {
+    const button = document.getElementById('apply-proposal');
+    if (!button) return;
+    button.addEventListener('click', () => {
+      let tries = 0;
+      const timer = setInterval(() => {
+        repairHookField();
+        tries += 1;
+        if (tries >= 60 || document.getElementById('proposal')?.hidden) clearInterval(timer);
+      }, 100);
+    });
+  }
+  repairHookField();
+  watchProposalApply();
   window.SseolzipCover = Object.freeze({draw, drawThumbnail, width: WIDTH, height: HEIGHT});
 })();
