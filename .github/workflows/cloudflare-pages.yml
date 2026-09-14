@@ -58,7 +58,7 @@ jobs:
           grep -Fq '"/manuscript*"' dist/_routes.json
 
       - name: Verify original UI, full stories and backend adapter
-        run: node --test tests/original-ui.test.mjs
+        run: node --test tests/original-ui.test.mjs tests/studio-editing.test.mjs
 
       - name: Discover Cloudflare account automatically
         shell: bash

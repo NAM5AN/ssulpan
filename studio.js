@@ -4,6 +4,7 @@
   const fields={title:'story-title',category:'category',teaser:'teaser',beforeContent:'before-content',afterContent:'after-content',hook:'hook',coverDetail:'cover-detail',caption:'caption',hashtags:'hashtags',sourceText:'source-text',sourceUrl:'source-url',storyBible:'story-bible',notes:'writing-notes',gateLine:'gate-line',rewriteInstruction:'rewrite-instruction'};
   const labels={prompt:'작성 지침 생성',generate:'전체 생성',rewrite:'부분 수정',extract:'이미지 글 읽기',social:'인스타 문구',review:'내용 점검',split:'끊을 위치 추천'};
   let current=null,items=[],dirty=false,timer,saveChain=Promise.resolve(),busy=false,loading=false,uploading=false,connected=false,previewView='before',proposal=null,selectedTitle=null;
+  let publishing=false,manualSplit=null;
   let promptState={prompt:'',revision:0},promptDirty=false,promptSaving=false;
   const message=text=>{$('status').textContent=text;};
   const work=text=>{$('work-status').textContent=text;};
@@ -26,7 +27,7 @@
     return data;}
   async function fingerprint(value){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value)));return Array.from(new Uint8Array(bytes),n=>n.toString(16).padStart(2,'0')).join('');}
   function temporaryBackup(){if(!current)return;try{localStorage.setItem('sseolzip:pending:'+current.id,JSON.stringify({data:collect(),at:Date.now()}));}catch{}}
-  function changed(){if(!current||loading)return;dirty=true;temporaryBackup();$('draft-status').textContent='수정 내용을 저장하고 있어요…';clearTimeout(timer);timer=setTimeout(()=>save().catch(e=>message(e.message)),1000);renderCover();updatePreview();counts();}
+  function changed(){if(!current||loading||publishing)return;dirty=true;temporaryBackup();$('publication-note').textContent='수정한 내용과 광고 전 범위는 게시 버튼을 누르면 사이트에 반영됩니다.';$('draft-status').textContent='수정 내용을 저장하고 있어요…';clearTimeout(timer);timer=setTimeout(()=>save().catch(e=>message(e.message)),1000);renderCover();updatePreview();counts();}
   function counts(){for(const side of ['before','after'])$(side+'-count').textContent=$(side+'-content').value.length.toLocaleString()+'자';}
   function updateItem(){
     if(!current)return;
@@ -47,7 +48,7 @@
     try{const state=await api('/api/writing-prompt',{method:'PUT',body:JSON.stringify({prompt:text,revision:promptState.revision})});promptState=state;if($('writing-prompt').value===text){$('writing-prompt').value=state.prompt;promptDirty=false;}promptStatus();return state;}
     finally{promptSaving=false;}
   }
-  async function save(reason='수정 전 원고',force=false){clearTimeout(timer);if(!current||(!dirty&&!force&&current.revision>0)){await saveChain;return current;}const did=current.id,snapshot=collect();dirty=false;const operation=saveChain.catch(()=>{}).then(async()=>{if(current?.id!==did)throw new Error('저장 중 원고가 바뀌었어요. 다시 열어 주세요.');const saved=await api('/api/drafts/'+did,{method:'PUT',body:JSON.stringify({data:snapshot,revision:current.revision,reason})});if(current?.id===did){current.revision=saved.revision;current.updatedAt=saved.updatedAt;current.data={...saved.data,...collect()};updateItem();if(!dirty){$('draft-status').textContent='서버에 저장했어요. '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});try{localStorage.removeItem('sseolzip:pending:'+did);}catch{}}}return saved;});saveChain=operation;try{return await operation;}catch(e){if(current?.id===did){dirty=true;temporaryBackup();$('draft-status').textContent='저장하지 못했어요. '+e.message;}throw e;}}
+  async function save(reason='수정 전 원고',force=false){clearTimeout(timer);if(!current||(!dirty&&!force&&current.revision>0)){await saveChain;return current;}const did=current.id,snapshot=collect();dirty=false;const operation=saveChain.catch(()=>{}).then(async()=>{if(current?.id!==did)throw new Error('저장 중 원고가 바뀌었어요. 다시 열어 주세요.');const saved=await api('/api/drafts/'+did,{method:'PUT',body:JSON.stringify({data:snapshot,revision:current.revision,reason})});if(current?.id===did){current.revision=saved.revision;current.updatedAt=saved.updatedAt;current.data={...saved.data,...collect()};updateItem();if(JSON.stringify(collect())===JSON.stringify(snapshot)){$('draft-status').textContent='서버에 저장했어요. '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});try{localStorage.removeItem('sseolzip:pending:'+did);}catch{}}}return saved;});saveChain=operation;try{return await operation;}catch(e){if(current?.id===did){dirty=true;temporaryBackup();$('publication-note').textContent='수정한 내용과 광고 전 범위는 게시 버튼을 누르면 사이트에 반영됩니다.';$('draft-status').textContent='저장하지 못했어요. '+e.message;}throw e;}}
   function renderCover(){if(!current||!window.SseolzipCover)return;const fits=window.SseolzipCover.draw($('cover-canvas'),{hook:$('hook').value,detail:$('cover-detail').value,category:$('category').value});$('download-cover').disabled=!fits;$('cover-status').textContent=fits?'9:16 세로형 · PNG 1080×1920':'표지 제목을 적거나 줄바꿈·문장 길이를 조정해 주세요.';}
   function updatePreview(scroll=false){if(!current)return;$('fade-value').value=$('fade-height').value+'px';$('preview-before').setAttribute('aria-pressed',String(previewView==='before'));$('preview-after').setAttribute('aria-pressed',String(previewView==='after'));$('reader-preview').contentWindow?.postMessage({type:'sseolzip:body-preview',id:current.id,...collect(),view:previewView,scrollToView:scroll},location.origin);}
   function renderImages(){const list=$('image-list');list.replaceChildren();(current?.data.imageIds||[]).forEach((iid,i)=>{const item=document.createElement('div');item.className='image-item';const img=document.createElement('img');img.src='/api/images/'+iid;img.alt=(i+1)+'번째 소재 이미지';const button=document.createElement('button');button.type='button';button.textContent=(i+1)+'번 제외';button.onclick=()=>{current.data.imageIds=current.data.imageIds.filter(id=>id!==iid);renderImages();changed();};item.append(img,button);list.append(item);});}
@@ -81,7 +82,7 @@
     $('proposal').scrollIntoView({behavior:'smooth',block:'start'});
   }
   function openWorkspace(result){
-    current=result;dirty=false;previewView='before';fill(result.data);
+    current=result;dirty=false;previewView='before';manualSplit=null;$('manual-split').hidden=true;fill(result.data);
     $('reader-preview').src='/studio/preview/?id='+encodeURIComponent(result.id)+'&preview=1';publication();
     $('draft-status').textContent=result.revision?'저장한 원고를 불러왔어요.':items.find(i=>i.id===result.id)?.published?'게시된 원고를 불러왔어요.':'소재나 작성 요청을 넣어 시작하세요.';
     $('proposal').hidden=true;proposal=null;
@@ -165,7 +166,54 @@
   $('save-prompt').onclick=guard(async()=>{await savePrompt();message('작성 지침을 저장했어요.');});
   $('connect-claude').onclick=guard(async()=>{const b=$('connect-claude');b.disabled=true;$('connection-result').textContent='클로드 연결을 확인하고 있어요…';const key=$('claude-key').value;$('claude-key').value='';try{const settings=await api('/api/settings',{method:'POST',body:JSON.stringify({key,model:$('claude-model').value.trim()})});connected=settings.configured;$('connection-status').textContent='클로드 연결됨 · '+settings.model;$('connection-result').textContent='연결했어요. 원고를 만들 수 있습니다.';}catch(e){$('connection-result').textContent=e.message;}finally{b.disabled=false;}});
   $('save-draft').onclick=guard(()=>save('직접 저장',true));
-  $('publish-story').onclick=guard(async()=>{if(!current)return;const button=$('publish-story');button.disabled=true;try{const saved=await save('게시 전 저장',true);await api('/api/drafts/'+current.id+'/publish',{method:'POST',body:JSON.stringify({revision:saved.revision})});updateItem();items.find(x=>x.id===current.id).published=true;publication();message('사이트에 게시했어요. 게시된 글 보기에서 확인하세요.');}finally{button.disabled=false;}});
+  $('publish-story').onclick=guard(async()=>{
+    if(!current||publishing)return;
+    if(busy||loading||uploading)throw new Error('진행 중인 작업이 끝난 뒤 게시해 주세요.');
+    if(manualSplit)throw new Error('광고 전 범위를 먼저 적용하거나 취소해 주세요.');
+    // Freeze the editor while saving and publishing this exact snapshot. An input
+    // made during the old save/publish gap must never look like it was published.
+    publishing=true;const did=current.id,snapshot=collect();
+    const controls=[...document.querySelectorAll('.studio-wrap input,.studio-wrap textarea,.studio-wrap select,.studio-wrap button')].map(el=>[el,el.disabled]);
+    controls.forEach(([el])=>el.disabled=true);message('현재 편집한 내용과 광고 전 범위를 게시하고 있어요…');
+    try{
+      const saved=await save('게시 전 저장',true);
+      if(current?.id!==did)throw new Error('원고가 바뀌어 게시하지 않았어요.');
+      for(const key of ['title','beforeContent','afterContent','gateLine','fadeHeight'])if(saved.data[key]!==snapshot[key])throw new Error('저장본의 '+key+' 값이 편집 내용과 달라요. 편집 내용은 보관했습니다.');
+      await api('/api/drafts/'+did+'/publish',{method:'POST',body:JSON.stringify({revision:saved.revision})});
+      const published=await api('/api/ssul_posts?id='+encodeURIComponent(did),{cache:'no-store'});
+      for(const key of ['title','beforeContent','afterContent','gateLine','fadeHeight'])if(published.post?.[key]!==snapshot[key])throw new Error('게시 내용 확인 필요: '+key+' 값이 편집본과 다릅니다. 현재 원고는 보존했어요.');
+      updateItem();items.find(x=>x.id===did).published=true;publication();
+      message('편집한 내용과 광고 전·후 범위대로 게시했어요. 게시본까지 확인했습니다.');
+    }finally{publishing=false;controls.forEach(([el,disabled])=>el.disabled=disabled);}
+  });
+  function splitPosition(){
+    const el=$('split-content'),cut=el.selectionEnd;
+    $('split-position').textContent='광고 전 '+cut.toLocaleString()+'자 · 광고 후 '+(el.value.length-cut).toLocaleString()+'자';
+  }
+  $('open-split-editor').onclick=guard(()=>{
+    if(!current||busy||loading||uploading||publishing)return;
+    const before=$('before-content').value,after=$('after-content').value;
+    manualSplit={id:current.id,before,after};
+    $('split-content').value=[before,after].filter(Boolean).join('\n\n');
+    $('manual-split').hidden=false;$('split-content').focus();
+    $('split-content').setSelectionRange(before.length,before.length);splitPosition();
+    $('manual-split').scrollIntoView({block:'start',behavior:'smooth'});
+  });
+  for(const event of ['input','click','keyup','select','selectionchange'])$('split-content').addEventListener(event,splitPosition);
+  $('cancel-manual-split').onclick=()=>{manualSplit=null;$('manual-split').hidden=true;};
+  $('apply-manual-split').onclick=guard(async()=>{
+    if(!manualSplit||!current||publishing)return;
+    const base=manualSplit;
+    if(base.id!==current.id||base.before!==$('before-content').value||base.after!==$('after-content').value)throw new Error('본문이 변경됐어요. 범위 설정을 다시 열면 최신 본문을 가져옵니다.');
+    const text=$('split-content').value,cut=$('split-content').selectionEnd;
+    const before=text.slice(0,cut).trimEnd(),after=text.slice(cut).trimStart();
+    if(!before.trim()||!after.trim())throw new Error('광고 전과 후에 내용이 남도록 본문 중간을 선택해 주세요.');
+    if(before.length>60000||after.length>60000)throw new Error('저장 가능한 기술 한도를 넘었어요. 내용을 줄이지 않았습니다.');
+    $('before-content').value=before;$('after-content').value=after;
+    manualSplit=null;$('manual-split').hidden=true;previewView='before';changed();
+    await save('광고 전 범위 직접 설정',true);
+    message('광고 전 범위를 저장했어요. 사이트에 반영하려면 게시 버튼을 눌러 주세요.');
+  });
   $('read-source').onclick=guard(async()=>{if(!current)return;const b=$('read-source'),did=current.id;b.disabled=true;work('원문을 읽고 있어요…');try{const result=await api('/api/source',{method:'POST',body:JSON.stringify({url:$('source-url').value})});if(current.id!==did){work('원고가 바뀌어 가져온 내용을 반영하지 않았어요. 다시 시도해 주세요.');return;}$('source-text').value=[$('source-text').value.trim(),result.text].filter(Boolean).join('\n\n');changed();work('가져온 글에 메뉴나 댓글이 섞였는지 확인해 주세요.');}catch(e){work(e.message);}finally{b.disabled=false;}});
   $('source-images').onchange=guard(async event=>{
     if(!current||busy||loading||uploading)return;
@@ -231,7 +279,7 @@
   function downloadBlob(blob,name){const href=URL.createObjectURL(blob),a=document.createElement('a');a.href=href;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),1000);}
   $('export-draft').onclick=()=>{if(!current)return;const d=collect(),text=[d.title,'[미리 보여줄 내용]',d.beforeContent,'[광고 후 보여줄 내용]',d.afterContent,'[표지 제목]',d.hook,d.coverDetail,'[인스타 캡션]',d.caption,d.hashtags,'[소재 주소]',d.sourceUrl,'[소재 내용]',d.sourceText,'[인물·사건 메모]',d.storyBible].join('\n\n');downloadBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),'ssulpan-'+current.id+'.txt');};
   $('download-cover').onclick=()=>{if($('download-cover').disabled||!current)return;$('cover-canvas').toBlob(blob=>{if(blob){downloadBlob(blob,'ssulpan-'+current.id+'-1080x1920.png');message('1080×1920 PNG를 저장했어요.');}else message('표지를 저장하지 못했어요. 다시 시도해 주세요.');},'image/png');};
-  window.addEventListener('beforeunload',e=>{if(dirty||promptDirty){temporaryBackup();e.preventDefault();e.returnValue='';}});
+  window.addEventListener('beforeunload',e=>{if(dirty||promptDirty||manualSplit){temporaryBackup();e.preventDefault();e.returnValue='';}});
   Promise.all([api('/api/settings'),api('/api/drafts'),api('/api/writing-prompt')]).then(async([settings,data,prompt])=>{
     connected=settings.configured;$('claude-model').value=settings.model;
     $('connection-status').textContent=connected?'클로드 연결됨 · '+settings.model:'클로드 API 키를 연결하면 소재 읽기와 원고 생성을 사용할 수 있어요.';
