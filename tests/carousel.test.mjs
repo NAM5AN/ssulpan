@@ -1,15 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile,writeFile} from 'node:fs/promises';
-import {DEFAULT_STYLE,paginate,textFits,graphemes,validateProject,sourceKey,cards,makeZip,crc32} from '../studio-carousel-core.mjs';
+import {readFile} from 'node:fs/promises';
+import {DEFAULT_STYLE,BODY_FILL_RATIO,paginate,textFits,graphemes,validateProject,sourceKey,cards,makeZip,crc32} from '../studio-carousel-core.mjs';
 import {createHandler,boundedJson} from '../supabase/functions/ssul_instagram/handler.mjs';
 const sample='월요일 아침, 책상 위에 이름 없는 봉투 하나가 놓여 있었다.\n\n"이거 누가 두고 갔어요?"\n옆자리 동료가 고개를 저었다.\n\n봉투를 열려던 그때, 휴대전화가 울렸다.\n';
-const base=()=>({version:1,source:{title:'테스트 원고',before:sample},style:{...DEFAULT_STYLE},cover:{title:'책상 위의 봉투',subtitle:'테스트용 소개'},cta:{enabled:true,title:'이어서 읽기',subtitle:'프로필 링크에서',button:'전체 이야기 보기'},pages:[{text:sample,image:''}],assets:{},coverImage:'',commonImage:'',manual:false});
+const base=()=>({version:1,source:{title:'테스트 원고',before:sample},style:{...DEFAULT_STYLE},cover:{title:'책상 위의 봉투',subtitle:'테스트용 소개'},cta:{enabled:true,title:'이야기는 여기서 계속됩니다',subtitle:'사용하지 않음',button:'전체 이야기 보기'},pages:[{text:sample,image:''}],assets:{},coverImage:'',commonImage:'',manual:false});
 const measuring=style=>s=>graphemes(s).length*style.fontSize*.9;
 for(const height of [1350,1920])for(const layout of ['photo','text'])test(`exact source + overflow safety ${height}/${layout}`,()=>{
   const style={...DEFAULT_STYLE,height,layout},source=sample.repeat(16)+'👩‍👩‍👦 안녕 e\u0301',measure=measuring(style),pages=paginate(source,style,measure);
   assert.ok(pages.length>1);assert.equal(pages.join(''),source);pages.forEach(p=>assert.ok(textFits(p,style,measure)));
 });
+test('body fill is intentionally conservative',()=>assert.ok(BODY_FILL_RATIO<=.65));
 test('normalizes CRLF, retains whitespace and dialogue',()=>{const style={...DEFAULT_STYLE};const s=('가나다  \r\n\r\n"말이지"\r\n').repeat(70);assert.equal(paginate(s,style,measuring(style)).join(''),s.replace(/\r\n?/g,'\n'));});
 test('grapheme-safe boundaries',()=>{const s='👩‍👩‍👦'.repeat(1200),pages=paginate(s,DEFAULT_STYLE,measuring(DEFAULT_STYLE));pages.forEach(p=>assert.equal(graphemes(p).join(''),p));assert.ok(pages.every(p=>graphemes(p).every(g=>g==='👩‍👩‍👦')));});
 test('too few requested pages do not truncate',()=>assert.throws(()=>paginate(sample.repeat(10),DEFAULT_STYLE,measuring(DEFAULT_STYLE),1),/최소/));
@@ -18,8 +19,8 @@ test('empty and technical maximum guarded',()=>{assert.throws(()=>paginate('  ',
 test('snapshot keys differ after moving ad boundary',async()=>{assert.notEqual(await sourceKey(base().source),await sourceKey({title:'테스트 원고',before:sample+'변경'}));});
 test('contract explicitly excludes after-content and other unknown fields',()=>{const p=base();p.afterContent='스포일러';p.source.afterContent='비밀';assert.ok(!JSON.stringify(validateProject(p)).includes('스포일러'));assert.ok(!JSON.stringify(validateProject(p)).includes('비밀'));});
 test('malicious asset and prototype theme rejected',()=>{const p=base();p.assets.a='data:image/svg+xml;base64,PHN2Zz4=';assert.throws(()=>validateProject(p));p.assets={};p.style.theme='__proto__';assert.throws(()=>validateProject(p));});
-test('manual text round-trips, no original-text fallback',()=>{const p=base();p.pages[0].text='수동으로 고친 최종 내용';p.manual=true;assert.equal(validateProject(p).pages[0].text,'수동으로 고친 최종 내용');assert.equal(cards(p).length,3);});
-test('CRC32 matches standard check value and ZIP local/end signatures',async()=>{assert.equal(crc32(new TextEncoder().encode('123456789')),0xcbf43926);const blob=makeZip([{name:'01_cover.png',data:new Uint8Array([1,2,3])},{name:'한글.txt',data:new TextEncoder().encode('정상')}]);const bytes=new Uint8Array(await blob.arrayBuffer()),v=new DataView(bytes.buffer);assert.equal(v.getUint32(0,true),0x04034b50);assert.equal(v.getUint32(bytes.length-22,true),0x06054b50);assert.equal(v.getUint16(bytes.length-12,true),2);});
+test('manual text round-trips and duplicate cover is omitted',()=>{const p=base();p.pages[0].text='수동으로 고친 최종 내용';p.manual=true;assert.equal(validateProject(p).pages[0].text,'수동으로 고친 최종 내용');assert.deepEqual(cards(p).map(c=>c.type),['body','end']);});
+test('CRC32 matches standard check value and ZIP local/end signatures',async()=>{assert.equal(crc32(new TextEncoder().encode('123456789')),0xcbf43926);const blob=makeZip([{name:'01_body.png',data:new Uint8Array([1,2,3])},{name:'한글.txt',data:new TextEncoder().encode('정상')}]);const bytes=new Uint8Array(await blob.arrayBuffer()),v=new DataView(bytes.buffer);assert.equal(v.getUint32(0,true),0x04034b50);assert.equal(v.getUint32(bytes.length-22,true),0x06054b50);assert.equal(v.getUint16(bytes.length-12,true),2);});
 const token='v1.1790000000000.'+'a'.repeat(16)+'.'+'b'.repeat(24)+'.'+'c'.repeat(43);
 const req=value=>new Request('https://test.invalid/function',{method:'POST',body:JSON.stringify(value),headers:{'Content-Type':'application/json'}});
 test('no session -> 401, no auth or DB request',async()=>{let calls=0;const h=createHandler({url:'https://test.invalid',publicKey:'public',serviceKey:'private',fetcher:async()=>{calls++;throw Error();}});assert.equal((await h(req({action:'get',key:'a'.repeat(64)}))).status,401);assert.equal(calls,0);});
@@ -29,3 +30,4 @@ test('optimistic revision conflict returns 409',async()=>{const p=base(),key=awa
 test('mismatched source hash cannot be stored',async()=>{let calls=0;const h=createHandler({url:'https://test.invalid',publicKey:'public',serviceKey:'private',fetcher:async()=>{calls++;return Response.json({ok:true,authenticated:true});}});assert.equal((await h(req({studioSession:token,action:'put',key:'0'.repeat(64),data:base(),revision:0}))).status,400);assert.equal(calls,1);});
 test('bounded request reading rejects bad JSON and oversized bodies',async()=>{await assert.rejects(()=>boundedJson(new Request('https://test.invalid',{method:'POST',body:'invalid'})));await assert.rejects(()=>boundedJson(req({long:'a'.repeat(80)}),20));});
 test('feature never reads the after-editor or after-content DOM fields',async()=>{const ui=await readFile(new URL('../studio-carousel.js',import.meta.url),'utf8');assert.ok(!ui.includes("field('after-content')"));assert.ok(!ui.includes("getElementById('after-editor')"));assert.ok(ui.includes("field('before-content')"));assert.ok(ui.includes('atSerial!==serial'));});
+test('UI patch removes redundant cover and page-count controls',async()=>{const patch=await readFile(new URL('../studio-carousel-ui-patch.js',import.meta.url),'utf8');for(const marker of ['ig-total','ig-title','ig-footer','ig-end-subtitle'])assert.ok(patch.includes(marker));});
