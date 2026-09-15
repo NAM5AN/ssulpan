@@ -109,14 +109,15 @@ export function drawCard(canvas,project,card,number,total,images=new Map(),scale
     if(!block(ctx,text,g.left,g.top,g.width,g.bottom-g.top,project.style.fontSize,500,project.style.lineHeight))errors.push(`본문 ${card.index+1}장이 넘쳐요. 한 장에 너무 많은 글을 넣지 않도록 다시 나눠 주세요.`);
   }else{
     ctx.fillStyle='#fd582b';ctx.fillRect(0,0,WIDTH,h);ctx.fillStyle='#111111';font(ctx,h===1350?54:62,900);ctx.fillText('썰판',76,h===1350?48:58);
-    const buttonH=h===1350?126:150,buttonY=h===1350?940:1390;
-    const guideY=buttonY-(h===1350?250:300);
+    const guideY=h===1350?555:850,guideHeight=h===1350?260:330;
+    ctx.fillStyle='#111111';round(ctx,76,guideY-52,120,12,6);ctx.fill();
     if(!project.cta.title.trim())errors.push('마지막 유도 문구를 입력해 주세요.');
-    ctx.fillStyle='#111111';if(!block(ctx,project.cta.title,76,guideY,928,210,h===1350?58:70,800,1.35))errors.push('마지막 유도 문구가 넘쳐요.');
-    const label=project.cta.button||'전체 이야기 보기';
-    ctx.fillStyle='#111111';round(ctx,76,buttonY,928,buttonH,22);ctx.fill();ctx.fillStyle='#ffffff';font(ctx,h===1350?35:40,700);
-    const labelW=ctx.measureText(label).width;if(labelW>820)errors.push('마지막 버튼 문구가 너무 길어요.');
-    ctx.fillText(label,76+(928-labelW)/2,buttonY+(buttonH-(h===1350?35:40))/2-4);
+    if(!block(ctx,project.cta.title,76,guideY,928,guideHeight,h===1350?58:70,800,1.35))errors.push('마지막 유도 문구가 넘쳐요.');
+    const rawNote=(project.cta.button||'').trim();
+    const note=(!rawNote||rawNote==='전체 이야기 보기'||rawNote==='전체 이야기는 프로필 링크에서')?'이어지는 이야기는 게시글 링크에서':rawNote;
+    ctx.fillStyle='#111111';font(ctx,h===1350?30:36,650);
+    if(ctx.measureText(note).width>928)errors.push('링크 안내 문구가 너무 길어요.');
+    ctx.fillText(note,76,h===1350?980:1370);
   }
   canvas.setAttribute?.('aria-label',card.type==='cover'?'기존 썰판 표지':card.type==='end'?'마지막 안내':`본문 ${card.index+1}`);
   return errors;
