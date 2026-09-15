@@ -18,3 +18,7 @@ for required in ("if(path==='/studio'||path==='/studio/')", "studioApi(request,p
 
 p.write_text(s, encoding='utf-8')
 print('Verified protected studio: server password check, HttpOnly session and guarded direct routes')
+
+# Additive packaging; the original shell/worker access checks above stay intact.
+import runpy
+runpy.run_path(str(Path(__file__).with_name('package-carousel.py')),run_name='__main__')

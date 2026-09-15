@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-15",
+  "unitTests": {"passed": 21, "failed": 0, "command": "node --test tests/carousel.test.mjs"},
+  "chromiumSmoke": {
+    "passed": ["source-only build and automatic cloud save", "individual PNG ZIP, CRC/dimensions, manual edit and no after-content", "changed preview boundary blocks stale export and re-splits", "photo template, all-card 1080x1350 reflow and export", "second editor server restore and 390px layout", "cross-editor revision conflict does not overwrite"],
+    "pageErrors": [],
+    "limitations": "In-memory Chromium test. Network disabled; supplied local font, SHA-256 binding and mock cloud API. Actual PNG Blob bytes and ZIP entries inspected. Production uses pinned Pretendard, WebCrypto and IndexedDB. Real authenticated Supabase save and physical mobile devices not verified."
+  },
+  "databasePermissions": {"rls_enabled": true, "anon_read": false, "authenticated_update": false, "anon_rpc_execute": false, "service_rpc_execute": true},
+  "databaseMutationTest": "Not executed: connector SQL runs as supabase_read_only_user. No privileges relaxed for testing.",
+  "backend": {"function": "ssul_instagram", "version": 1, "status": "ACTIVE", "migration": "20260915052252_ssul_instagram_decks"}
+}
