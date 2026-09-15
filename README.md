@@ -25,3 +25,5 @@ cd ../restored-runtime && npm test
 ```
 
 `restored-runtime`의 복구 테스트는 현재 5/5 통과합니다.
+
+<!-- Instagram carousel style refresh 2026-09-15 -->
