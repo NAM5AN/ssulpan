@@ -9,11 +9,20 @@ for name in ASSETS:
     shutil.copyfile(ROOT / name, OUT / name)
     if name.endswith(('.js', '.mjs')):
         subprocess.run(['node', '--check', str(OUT / name)], check=True)
+
+# The public path is stable, so version the module dependency as well as the entry
+# script to prevent an older ending-card renderer from surviving a browser cache.
+carousel = OUT / 'studio-carousel.js'
+carousel_source = carousel.read_text(encoding='utf-8')
+carousel_source = carousel_source.replace("'./studio-carousel-core.mjs'", "'./studio-carousel-core.mjs?v=20260915-3'", 1)
+carousel.write_text(carousel_source, encoding='utf-8')
+subprocess.run(['node', '--check', str(carousel)], check=True)
+
 for name in ('studio.html', 'studio-shell.txt'):
     path=OUT/name
     content=path.read_text(encoding='utf-8')
-    marker='<script type="module" src="/studio-carousel.js?v=20260915-1"></script>'
-    gate_marker='<script src="/studio-carousel-gate-sync.js?v=20260915-2" defer></script>'
+    marker='<script type="module" src="/studio-carousel.js?v=20260915-3"></script>'
+    gate_marker='<script src="/studio-carousel-gate-sync.js?v=20260915-3" defer></script>'
     if marker not in content:
         assert '</body>' in content, f'{name}: expected closing body'
         content=content.replace('</body>',marker+'</body>',1)
