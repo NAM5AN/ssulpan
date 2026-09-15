@@ -2,10 +2,11 @@
 export const VERSION = 1;
 export const MAX_PAGES = 60;
 export const MAX_BYTES = 12 * 1024 * 1024;
-export const DEFAULT_STYLE = Object.freeze({height:1920,theme:'paper',layout:'text',fontSize:48,lineHeight:1.5,brandLine:'',footer:''});
+export const DEFAULT_STYLE = Object.freeze({height:1920,theme:'site',layout:'text',fontSize:52,lineHeight:1.55,brandLine:'',footer:''});
 export const THEMES = Object.freeze({
-  paper:{paper:'#ffffff',ink:'#000000',muted:'#5d5d5d',accent:'#fd582b',line:'#ece8e4',footer:'#000000'},
-  brand:{paper:'#fd582b',ink:'#000000',muted:'#3f251c',accent:'#000000',line:'#000000',footer:'#000000'}
+  site:{paper:'#ffffff',ink:'#111111',muted:'#6f6a65',accent:'#fd582b',line:'#111111',footer:'#111111'},
+  paper:{paper:'#f7f4ee',ink:'#171717',muted:'#77736d',accent:'#f4b7ba',line:'#d9d3ca',footer:'#191919'},
+  brand:{paper:'#fff7f1',ink:'#171717',muted:'#796d64',accent:'#ff936e',line:'#e3d5cb',footer:'#171717'}
 });
 export const normalizeText = text => String(text ?? '').replace(/\r\n?/g,'\n');
 export async function sourceKey(source) {
@@ -21,7 +22,7 @@ function string(value,max,label) {
 export function validateProject(raw) {
   if(!raw||raw.version!==VERSION||!raw.source||!raw.style||!Array.isArray(raw.pages))throw new Error('지원하는 썰판 작업파일이 아니에요.');
   const s=raw.style;
-  if(![1350,1920].includes(s.height)||!Object.hasOwn(THEMES,s.theme)||!['text','photo'].includes(s.layout)||!Number.isFinite(s.fontSize)||s.fontSize<32||s.fontSize>64||!Number.isFinite(s.lineHeight)||s.lineHeight<1.3||s.lineHeight>1.8)throw new Error('스타일 설정을 확인해 주세요.');
+  if(![1350,1920].includes(s.height)||!Object.hasOwn(THEMES,s.theme)||!['text','photo'].includes(s.layout)||!Number.isFinite(s.fontSize)||s.fontSize<32||s.fontSize>68||!Number.isFinite(s.lineHeight)||s.lineHeight<1.3||s.lineHeight>1.85)throw new Error('스타일 설정을 확인해 주세요.');
   if(raw.pages.length<1||raw.pages.length>MAX_PAGES)throw new Error('본문 페이지 수를 확인해 주세요.');
   const assets={};
   for(const [key,value] of Object.entries(raw.assets||{})){

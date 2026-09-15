@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil, subprocess
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'dist'
-ASSETS = ('studio-carousel.js', 'studio-carousel-core.mjs', 'studio-carousel-contract.mjs', 'studio-carousel.css', 'studio-carousel-ui-patch.js', 'ssul-instagram-api.mjs')
+ASSETS = ('studio-carousel.js', 'studio-carousel-core.mjs', 'studio-carousel-contract.mjs', 'studio-carousel.css', 'ssul-instagram-api.mjs')
 for name in ASSETS:
     shutil.copyfile(ROOT / name, OUT / name)
     if name.endswith(('.js', '.mjs')):
@@ -13,12 +13,9 @@ for name in ('studio.html', 'studio-shell.txt'):
     path=OUT/name
     content=path.read_text(encoding='utf-8')
     marker='<script type="module" src="/studio-carousel.js?v=20260915-1"></script>'
-    patch='<script src="/studio-carousel-ui-patch.js?v=20260915-2" defer></script>'
     if marker not in content:
         assert '</body>' in content, f'{name}: expected closing body'
-        content=content.replace('</body>',marker+patch+'</body>',1)
-    elif patch not in content:
-        content=content.replace(marker,marker+patch,1)
+        content=content.replace('</body>',marker+'</body>',1)
     path.write_text(content,encoding='utf-8')
 worker=OUT/'_worker.js'
 s=worker.read_text(encoding='utf-8')
